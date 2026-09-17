@@ -16,6 +16,7 @@ Each release is identified by three related version fields that must stay in syn
 
 | Git Tag | Commit | `$plugin->version` | `$plugin->release` | Commit Message / Description |
 | :--- | :--- | :--- | :--- | :--- |
+| *pending* | *pending* | `2026091700` | `2.4.16` | fix: resolve Issue #13 — eliminate settings regex config overwrite, dynamic roleplay prompt, and non-repeating progressive fallbacks |
 | *pending* | *pending* | `2026081011` | `2.4.11` | feat: editable evaluation prompt + per-activity max_turns/parent_intensity overrides |
 | *pending* | *pending* | `2026081010` | `2.4.10` | feat: add global persona system prompt template setting + diagnostics preview |
 | *pending* | *pending* | `2026081009` | `2.4.9` | feat: add global parent assertiveness/aggressiveness setting (parent_intensity) |

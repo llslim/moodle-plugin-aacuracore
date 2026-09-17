@@ -50,12 +50,9 @@ class deterministic_tree_strategy implements response_strategy {
      * @param string $statekey
      * @return string
      */
-    public function generate_response(array $messages, scenario_definition $scenario, string $statekey): string {
-        $node = $scenario->get_state_node($statekey);
-        if ($node && !empty($node['bot_prompt'])) {
-            return $node['bot_prompt'];
-        }
-        return '';
+    public function generate_response(array $messages, scenario_definition $scenario, string $statekey, string $parentintensity = ''): string {
+        $fallback = new regex_matcher_strategy();
+        return $fallback->generate_response($messages, $scenario, $statekey, $parentintensity);
     }
 
     /**

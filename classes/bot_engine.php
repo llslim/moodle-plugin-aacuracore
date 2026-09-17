@@ -68,20 +68,25 @@ class bot_engine {
      * @param int $courseid
      * @param int $cmid
      * @param string $scenariocode
+     * @param mixed $strategy Optional strategy override (avoids mutating global config)
      */
-    public function __construct(int $userid, int $courseid, int $cmid = 0, string $scenariocode = 'anna') {
+    public function __construct(int $userid, int $courseid, int $cmid = 0, string $scenariocode = 'anna', $strategy = null) {
         $this->userid = $userid;
         $this->courseid = $courseid;
         $this->cmid = $cmid;
         $this->scenario = scenario_loader::load($scenariocode, $courseid);
 
-        $strategytype = get_config('local_aacuracore', 'engine_strategy') ?: 'external_llm';
-        if ($strategytype === 'regex') {
-            $this->strategy = new \local_aacuracore\strategy\regex_matcher_strategy();
-        } else if ($strategytype === 'moodle_core_ai') {
-            $this->strategy = new \local_aacuracore\strategy\core_ai_provider_strategy();
+        if ($strategy !== null) {
+            $this->strategy = $strategy;
         } else {
-            $this->strategy = new \local_aacuracore\strategy\generative_ai_api_strategy();
+            $strategytype = get_config('local_aacuracore', 'engine_strategy') ?: 'external_llm';
+            if ($strategytype === 'regex') {
+                $this->strategy = new \local_aacuracore\strategy\regex_matcher_strategy();
+            } else if ($strategytype === 'moodle_core_ai') {
+                $this->strategy = new \local_aacuracore\strategy\core_ai_provider_strategy();
+            } else {
+                $this->strategy = new \local_aacuracore\strategy\generative_ai_api_strategy();
+            }
         }
 
         $this->resolve_activity_settings();
@@ -214,6 +219,15 @@ class bot_engine {
      */
     public function get_strategy() {
         return $this->strategy;
+    }
+
+    /**
+     * Sets the active response strategy directly.
+     *
+     * @param mixed $strategy
+     */
+    public function set_strategy($strategy): void {
+        $this->strategy = $strategy;
     }
 
     /**

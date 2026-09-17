@@ -78,11 +78,12 @@ class core_ai_provider_strategy implements response_strategy {
             if (isset($response["choices"][0]["message"]["content"])) {
                 return trim($response["choices"][0]["message"]["content"]);
             }
-        } catch (\Exception $e) {
-            // Fallback to static prompt if AI engine throws exception
+        } catch (\Throwable $e) {
+            debugging('[AACURA] core_ai generate_response failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
 
-        return $stateprompt;
+        $fallback = new regex_matcher_strategy();
+        return $fallback->generate_response($messages, $scenario, $statekey, $parentintensity);
     }
 
     /**

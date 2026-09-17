@@ -128,12 +128,14 @@ class generative_ai_api_strategy implements response_strategy {
                 throw new \Exception($response['error']['message']);
             }
             throw new \Exception("External API returned no choices");
-        } catch (\Exception $e) {
-            // Fallback to static prompt if cURL errors out
-            return $stateprompt;
+        } catch (\Throwable $e) {
+            debugging('[AACURA] generate_response LLM call failed: ' . $e->getMessage() . '. Falling back to progressive fallback strategy.', DEBUG_DEVELOPER);
+            $fallback = new regex_matcher_strategy();
+            return $fallback->generate_response($messages, $scenario, $statekey, $parentintensity);
         }
 
-        return $stateprompt;
+        $fallback = new regex_matcher_strategy();
+        return $fallback->generate_response($messages, $scenario, $statekey, $parentintensity);
     }
 
     /**

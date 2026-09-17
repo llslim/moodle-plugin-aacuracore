@@ -108,10 +108,49 @@ class regex_matcher_strategy implements response_strategy {
      */
     public function generate_response(array $messages, scenario_definition $scenario, string $statekey, string $parentintensity = ''): string {
         $node = $scenario->get_state_node($statekey);
-        if ($node && !empty($node['bot_prompt'])) {
-            return $node['bot_prompt'];
+        $stateprompt = ($node && !empty($node['bot_prompt'])) ? $node['bot_prompt'] : '';
+
+        // Check if the static node prompt has already been spoken in this conversation
+        $alreadysaid = false;
+        if (!empty($stateprompt)) {
+            foreach ($messages as $msg) {
+                $sender = is_object($msg) ? $msg->sender : ($msg['sender'] ?? '');
+                $text = is_object($msg) ? $msg->message_text : ($msg['message_text'] ?? '');
+                if ($sender === 'system' && trim($text) === trim($stateprompt)) {
+                    $alreadysaid = true;
+                    break;
+                }
+            }
         }
-        return 'I see. Please continue.';
+
+        // If the node prompt hasn't been said yet, use it as the opening/anchor for this state
+        if (!$alreadysaid && !empty($stateprompt)) {
+            return $stateprompt;
+        }
+
+        // Progressive, in-character follow-up prompts across multi-turn exchanges to avoid repeating
+        $pronoun = $scenario->get_persona()['child_preferred_pronoun'] ?? 'they/them';
+        $pronounobj = (strpos($pronoun, 'she') !== false) ? 'her' : ((strpos($pronoun, 'he') !== false) ? 'him' : 'them');
+
+        $progressiveprompts = [
+            "I want to make sure I understand. What would be the next step for us to try at home and school?",
+            "Could you give me a specific example of how this would work for {$pronounobj} during the day?",
+            "That makes sense, but I'm worried about consistency. How can we make sure everyone is on the same page?",
+            "I appreciate you walking me through this. How long do you think it will take before we see progress?",
+            "Okay, I'm willing to give this a try. What should we do first to get started?",
+        ];
+
+        // Count how many system responses have occurred to cycle smoothly
+        $systemcount = 0;
+        foreach ($messages as $msg) {
+            $sender = is_object($msg) ? $msg->sender : ($msg['sender'] ?? '');
+            if ($sender === 'system') {
+                $systemcount++;
+            }
+        }
+
+        $index = max(0, $systemcount - 1) % count($progressiveprompts);
+        return $progressiveprompts[$index];
     }
 
     /**

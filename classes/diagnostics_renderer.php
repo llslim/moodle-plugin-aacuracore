@@ -634,11 +634,9 @@ class diagnostics_renderer {
             $userid = $tempuser ? $tempuser->id : 0;
             $simcourse = $sentinelcourse + $idx++;
 
-            // Clean up any prior simulation session for this synthetic course.
-            $DB->delete_records('local_aacuracore_sessions', ['userid' => $userid, 'courseid' => $simcourse]);
-
-            set_config('engine_strategy', 'regex', 'local_aacuracore');
-            $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code);
+            // Run simulation deterministically using in-memory regex strategy without mutating global config.
+            $simstrategy = new \local_aacuracore\strategy\regex_matcher_strategy();
+            $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code, $simstrategy);
             $minturns = $engine->get_max_turns();
             $engine->reset_session();
 

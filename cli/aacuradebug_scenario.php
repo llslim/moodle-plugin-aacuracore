@@ -171,19 +171,19 @@ function run_full_turn_simulation() {
     $debuguser = $DB->get_record('user', ['username' => 'debug']);
     $userid = $debuguser ? $debuguser->id : 0;
 
-    set_config('engine_strategy', 'regex', 'local_aacuracore');
-
     // Use a distinct sentinel courseid per scenario so each simulation uses its own
     // isolated session (courseid=0 shared by all would collide and pollute state).
     $sentinelcourse = 9000000;
     $idx = 0;
+
+    $simstrategy = new \local_aacuracore\strategy\regex_matcher_strategy();
 
     foreach (['anna', 'brianna', 'cathy', 'mary'] as $code) {
         try {
             $simcourse = $sentinelcourse + $idx++;
             $DB->delete_records('local_aacuracore_sessions', ['userid' => $userid, 'courseid' => $simcourse]);
 
-            $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code);
+            $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code, $simstrategy);
             $minturns = $engine->get_max_turns();
             $engine->reset_session();
 
