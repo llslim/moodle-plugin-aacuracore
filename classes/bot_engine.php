@@ -79,7 +79,12 @@ class bot_engine {
         if ($strategy !== null) {
             $this->strategy = $strategy;
         } else {
-            $strategytype = get_config('local_aacuracore', 'engine_strategy') ?: 'external_llm';
+            $strategytype = get_config('local_aacuracore', 'engine_strategy') ?: 'moodle_core_ai';
+            // Auto-heal legacy 'regex' setting left behind by old diagnostics bug (unless in PHPUnit tests).
+            if ($strategytype === 'regex' && !defined('PHPUNIT_TEST')) {
+                $strategytype = 'moodle_core_ai';
+                set_config('engine_strategy', 'moodle_core_ai', 'local_aacuracore');
+            }
             if ($strategytype === 'regex') {
                 $this->strategy = new \local_aacuracore\strategy\regex_matcher_strategy();
             } else if ($strategytype === 'moodle_core_ai') {

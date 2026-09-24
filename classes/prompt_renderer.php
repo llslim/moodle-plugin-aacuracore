@@ -151,6 +151,10 @@ EOT;
         }
         $globalsetting = get_config('local_aacuracore', 'prompt_template');
         if (!empty($globalsetting)) {
+            // Guard against legacy template that commanded parroting the state prompt.
+            if (strpos($globalsetting, 'On this turn, you must convey the following core concern: "{{stateprompt}}"') !== false) {
+                return self::DEFAULT_TEMPLATE;
+            }
             return $globalsetting;
         }
         return self::DEFAULT_TEMPLATE;

@@ -261,5 +261,22 @@ function xmldb_local_aacuracore_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026082504, 'local', 'aacuracore');
     }
 
+    if ($oldversion < 2026092400) {
+        // Migrate legacy 'regex' engine strategy left behind by old diagnostics renderer bug.
+        $strategy = get_config('local_aacuracore', 'engine_strategy');
+        if ($strategy === 'regex') {
+            set_config('engine_strategy', 'moodle_core_ai', 'local_aacuracore');
+        }
+
+        // Migrate stored prompt template if it contains the legacy repeating constraint.
+        require_once(__DIR__ . '/../classes/prompt_renderer.php');
+        $storedprompt = get_config('local_aacuracore', 'prompt_template');
+        if (!empty($storedprompt) && strpos($storedprompt, 'On this turn, you must convey the following core concern: "{{stateprompt}}"') !== false) {
+            set_config('prompt_template', \local_aacuracore\prompt_renderer::DEFAULT_TEMPLATE, 'local_aacuracore');
+        }
+
+        upgrade_plugin_savepoint(true, 2026092400, 'local', 'aacuracore');
+    }
+
     return true;
 }

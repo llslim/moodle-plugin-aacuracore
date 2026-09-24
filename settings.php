@@ -305,7 +305,8 @@ if ($hassiteconfig) {
             $providers = $manager->get_provider_records();
             foreach ($providers as $p) {
                 $status = ($p->enabled) ? 'Enabled' : 'Disabled';
-                $coreaiprovideroptions[$p->provider] = "{$p->name} ({$p->provider}) - [{$status}]";
+                $key = (string)$p->id;
+                $coreaiprovideroptions[$key] = "{$p->name} ({$p->provider}) - [{$status}]";
             }
         } catch (\Throwable $e) {
             // Core AI manager exception fallback
