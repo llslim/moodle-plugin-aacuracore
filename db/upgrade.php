@@ -278,5 +278,10 @@ function xmldb_local_aacuracore_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026092400, 'local', 'aacuracore');
     }
 
+    if ($oldversion < 2026092401) {
+        // Upgrade savepoint for regex matcher strategy intent enhancements and anti-repetition memory.
+        upgrade_plugin_savepoint(true, 2026092401, 'local', 'aacuracore');
+    }
+
     return true;
 }

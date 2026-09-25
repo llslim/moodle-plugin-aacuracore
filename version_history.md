@@ -8,6 +8,7 @@ This log documents the commit history on the `dev` branch, mapping each update t
 
 | Git Tag | Moodle `$plugin->version` | `$plugin->release` | Commit Message / Description |
 | :--- | :--- | :--- | :--- |
+| *pending* | `2026092401` | `2.4.18` | feat: regex matcher upgrade — multi-turn intent detection, off-topic guardrails, and non-repeating contextual pool memory |
 | *pending* | `2026092400` | `2.4.17` | fix: auto-heal legacy regex engine_strategy in bot_engine, disambiguate multi-instance core_ai provider dropdown, and guard legacy prompt template |
 | *pending* | `2026091700` | `2.4.16` | fix: resolve Issue #13 — eliminate settings regex config overwrite, dynamic roleplay prompt, and non-repeating progressive fallbacks |
 | *pending* | `2026081011` | `2.4.11` | feat: editable evaluation prompt + per-activity max_turns/parent_intensity overrides |
