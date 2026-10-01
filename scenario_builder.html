@@ -205,7 +205,7 @@
         <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
             Already have a scenario <code>.json</code> file? Upload it directly to register or update the persona in the site-wide scenario registry.
         </p>
-        <form action="<?php echo new moodle_url('/local/aacura_core/scenario_builder.php'); ?>" method="post" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <form action="<?php echo new moodle_url('/local/aacuracore/scenario_builder.php'); ?>" method="post" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
             <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
             <input type="hidden" name="action" value="upload">
             <input type="file" name="jsonfile" accept=".json" required style="flex: 1; min-width: 240px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background-color: var(--card-bg);">
@@ -238,7 +238,7 @@
                         <td style="padding: 0.75rem; font-family: monospace; color: var(--primary);"><?php echo s($cs->scenariocode); ?></td>
                         <td style="padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"><?php echo s(shorten_text($cs->description, 90)); ?></td>
                         <td style="padding: 0.75rem; text-align: center;">
-                            <form action="<?php echo new moodle_url('/local/aacura_core/scenario_builder.php'); ?>" method="post" onsubmit="return confirm('Are you sure you want to delete custom persona <?php echo s($cs->name); ?>?');" style="margin: 0;">
+                            <form action="<?php echo new moodle_url('/local/aacuracore/scenario_builder.php'); ?>" method="post" onsubmit="return confirm('Are you sure you want to delete custom persona <?php echo s($cs->name); ?>?');" style="margin: 0;">
                                 <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="scenariocode" value="<?php echo s($cs->scenariocode); ?>">

@@ -8,6 +8,7 @@ This log documents the commit history on the `dev` branch, mapping each update t
 
 | Git Tag | Moodle `$plugin->version` | `$plugin->release` | Commit Message / Description |
 | :--- | :--- | :--- | :--- |
+| *pending* | `2026100102` | `2.4.20` | fix: resolve Issue #17 — correct scenario builder form action URL (`/local/aacuracore/`) |
 | *pending* | `2026100101` | `2.4.19` | fix: wait for user initial message (#14), explain prompt info usage (#15), and fix delegated scenario export (#16) |
 | *pending* | `2026092401` | `2.4.18` | feat: regex matcher upgrade — multi-turn intent detection, off-topic guardrails, and non-repeating contextual pool memory |
 | *pending* | `2026092400` | `2.4.17` | fix: auto-heal legacy regex engine_strategy in bot_engine, disambiguate multi-instance core_ai provider dropdown, and guard legacy prompt template |
