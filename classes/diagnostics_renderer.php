@@ -637,7 +637,7 @@ class diagnostics_renderer {
             // Run simulation deterministically using in-memory regex strategy without mutating global config.
             $simstrategy = new \local_aacuracore\strategy\regex_matcher_strategy();
             $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code, $simstrategy);
-            $minturns = $engine->get_max_turns();
+            $minturns = $engine->get_min_turns();
             $engine->reset_session();
 
             $status = 'OK';

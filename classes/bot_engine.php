@@ -55,8 +55,8 @@ class bot_engine {
     /** @var \stdClass $sessionrecord */
     private \stdClass $sessionrecord;
 
-    /** @var int $max_turns Minimum student turns before grading (activity-level override, else global). */
-    private int $max_turns;
+    /** @var int $min_turns Minimum student turns before grading (activity-level override, else global). */
+    private int $min_turns;
 
     /** @var string $parentIntensity Assertiveness/aggressiveness level (activity-level override, else global). */
     private string $parent_intensity;
@@ -100,10 +100,10 @@ class bot_engine {
     }
 
     /**
-     * Resolve per-activity max_turns and parent_intensity overrides.
+     * Resolve per-activity min_turns and parent_intensity overrides.
      *
      * Reads the aacurachat activity record for this course (when present) and
-     * uses its max_turns/parent_intensity columns if set; otherwise falls back
+     * uses its min_turns/parent_intensity columns if set; otherwise falls back
      * to the site-wide global settings (or defaults). The turn count acts as a
      * MINIMUM: the conversation is graded only after this many student turns.
      */
@@ -111,18 +111,23 @@ class bot_engine {
         global $DB;
 
         // Defaults (global config, then hardcoded).
-        $maxturns = (int)get_config('local_aacuracore', 'max_turns');
+        $minturns = (int)get_config('local_aacuracore', 'min_turns');
+        if ($minturns <= 0) {
+            $minturns = (int)get_config('local_aacuracore', 'max_turns');
+        }
         $intensity = get_config('local_aacuracore', 'parent_intensity') ?: 'medium';
-        if ($maxturns <= 0) {
-            $maxturns = 8;
+        if ($minturns <= 0) {
+            $minturns = 8;
         }
 
         // Try activity-level overrides.
         if ($this->courseid > 0) {
             $aacurachat = $DB->get_record('aacurachat', ['course' => $this->courseid]);
             if ($aacurachat) {
-                if (property_exists($aacurachat, 'max_turns') && !empty($aacurachat->max_turns)) {
-                    $maxturns = (int)$aacurachat->max_turns;
+                if (property_exists($aacurachat, 'min_turns') && !empty($aacurachat->min_turns)) {
+                    $minturns = (int)$aacurachat->min_turns;
+                } else if (property_exists($aacurachat, 'max_turns') && !empty($aacurachat->max_turns)) {
+                    $minturns = (int)$aacurachat->max_turns;
                 }
                 if (property_exists($aacurachat, 'parent_intensity') && !empty($aacurachat->parent_intensity)) {
                     $intensity = $aacurachat->parent_intensity;
@@ -131,14 +136,14 @@ class bot_engine {
         }
 
         // Scenario-level fallback (from the scenario JSON) when no activity override set.
-        if ($maxturns === 8 && $this->scenario->get_min_turns() !== null && $this->scenario->get_min_turns() > 0) {
-            $maxturns = $this->scenario->get_min_turns();
+        if ($minturns === 8 && $this->scenario->get_min_turns() !== null && $this->scenario->get_min_turns() > 0) {
+            $minturns = $this->scenario->get_min_turns();
         }
         if ($intensity === 'medium' && !empty($this->scenario->get_parent_intensity())) {
             $intensity = $this->scenario->get_parent_intensity();
         }
 
-        $this->max_turns = $maxturns;
+        $this->min_turns = $minturns;
         $this->parent_intensity = $intensity;
     }
 
@@ -147,8 +152,17 @@ class bot_engine {
      *
      * @return int
      */
+    public function get_min_turns(): int {
+        return $this->min_turns;
+    }
+
+    /**
+     * Backward-compatible alias for get_min_turns().
+     *
+     * @return int
+     */
     public function get_max_turns(): int {
-        return $this->max_turns;
+        return $this->min_turns;
     }
 
     /**
@@ -397,7 +411,7 @@ class bot_engine {
         // many student turns before it is graded and terminated. Reaching a
         // terminal state early does NOT end the conversation early; instead the
         // dialogue continues until the minimum turn count is satisfied.
-        $minturns = $this->max_turns;
+        $minturns = $this->min_turns;
 
         // If a terminal state (RESOLUTION/FAIL_STATE) was reached but we are still
         // below the minimum turn count, keep the conversation going by cycling back

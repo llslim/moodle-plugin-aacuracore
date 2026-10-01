@@ -184,7 +184,7 @@ function run_full_turn_simulation() {
             $DB->delete_records('local_aacuracore_sessions', ['userid' => $userid, 'courseid' => $simcourse]);
 
             $engine = new \local_aacuracore\bot_engine($userid, $simcourse, 0, $code, $simstrategy);
-            $minturns = $engine->get_max_turns();
+            $minturns = $engine->get_min_turns();
             $engine->reset_session();
 
             $status = 'OK';

@@ -285,7 +285,8 @@ class generation_and_prompt_test extends \advanced_testcase {
             $table->add_field('intro', XMLDB_TYPE_TEXT, null, null, null, null, null);
             $table->add_field('introformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
             $table->add_field('scenariocode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'anna');
-            $table->add_field('max_turns', XMLDB_TYPE_INTEGER, '6', null, null, null, '8', 'scenariocode');
+            $table->add_field('min_turns', XMLDB_TYPE_INTEGER, '6', null, null, null, '8', 'scenariocode');
+            $table->add_field('max_turns', XMLDB_TYPE_INTEGER, '6', null, null, null, '8', 'min_turns');
             $table->add_field('parent_intensity', XMLDB_TYPE_CHAR, '20', null, null, null, null, 'max_turns');
             $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
             $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -295,7 +296,7 @@ class generation_and_prompt_test extends \advanced_testcase {
     }
 
     /**
-     * Test bot_engine uses activity-level max_turns override when set.
+     * Test bot_engine uses activity-level max_turns / min_turns override when set.
      */
     public function test_bot_engine_activity_max_turns_override() {
         global $DB;
@@ -303,20 +304,21 @@ class generation_and_prompt_test extends \advanced_testcase {
         $this->ensure_aacurachat_table();
 
         set_config('engine_strategy', 'regex', 'local_aacuracore');
-        set_config('max_turns', 8, 'local_aacuracore');
+        set_config('min_turns', 8, 'local_aacuracore');
 
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
         $student = $generator->create_user();
         $this->setUser($student);
 
-        // Activity with an explicit max_turns override of 12.
+        // Activity with an explicit min_turns override of 12.
         $record = new \stdClass();
         $record->course = $course->id;
         $record->name = 'Activity A';
         $record->scenariocode = 'anna';
         $record->intro = 'Test';
         $record->introformat = FORMAT_HTML;
+        $record->min_turns = 12;
         $record->max_turns = 12;
         $record->parent_intensity = 'very_high';
         $record->timecreated = time();
@@ -324,6 +326,7 @@ class generation_and_prompt_test extends \advanced_testcase {
         $record->id = $DB->insert_record('aacurachat', $record);
 
         $engine = new \local_aacuracore\bot_engine($student->id, $course->id, 0, 'anna');
+        $this->assertEquals(12, $engine->get_min_turns());
         $this->assertEquals(12, $engine->get_max_turns());
         $this->assertEquals('very_high', $engine->get_parent_intensity());
     }
@@ -344,13 +347,14 @@ class generation_and_prompt_test extends \advanced_testcase {
         $student = $generator->create_user();
         $this->setUser($student);
 
-        // Activity with empty overrides (0 max_turns, empty intensity).
+        // Activity with empty overrides (0 min_turns, 0 max_turns, empty intensity).
         $record = new \stdClass();
         $record->course = $course->id;
         $record->name = 'Activity B';
         $record->scenariocode = 'anna';
         $record->intro = 'Test';
         $record->introformat = FORMAT_HTML;
+        $record->min_turns = 0;
         $record->max_turns = 0;
         $record->parent_intensity = '';
         $record->timecreated = time();
@@ -358,6 +362,7 @@ class generation_and_prompt_test extends \advanced_testcase {
         $record->id = $DB->insert_record('aacurachat', $record);
 
         $engine = new \local_aacuracore\bot_engine($student->id, $course->id, 0, 'anna');
+        $this->assertEquals(6, $engine->get_min_turns());
         $this->assertEquals(6, $engine->get_max_turns());
         $this->assertEquals('low', $engine->get_parent_intensity());
     }

@@ -58,6 +58,7 @@ class gradebook_test extends \advanced_testcase {
             $table->add_field('intro', XMLDB_TYPE_TEXT, null, null, null, null, null);
             $table->add_field('introformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
             $table->add_field('scenariocode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'anna');
+            $table->add_field('min_turns', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
             $table->add_field('max_turns', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
             $table->add_field('parent_intensity', XMLDB_TYPE_CHAR, '20', null, null, null, null);
             $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -173,7 +174,8 @@ PHP;
             $record->scenariocode = $scenario;
             $record->intro = 'Test Intro';
             $record->introformat = FORMAT_HTML;
-            $record->max_turns = 3; // Minimum 3 turns before grading; verifies no early termination at a terminal state below the minimum.
+            $record->min_turns = 3; // Minimum 3 turns before grading; verifies no early termination at a terminal state below the minimum.
+            $record->max_turns = 3;
             $record->timecreated = time();
             $record->timemodified = time();
             $record->id = $DB->insert_record('aacurachat', $record);
@@ -294,7 +296,8 @@ PHP;
             $record->scenariocode = $scenario;
             $record->intro = 'Test Intro';
             $record->introformat = FORMAT_HTML;
-            $record->max_turns = 3; // Minimum 3 turns before grading; verifies no early termination at a terminal state below the minimum.
+            $record->min_turns = 3; // Minimum 3 turns before grading; verifies no early termination at a terminal state below the minimum.
+            $record->max_turns = 3;
             $record->timecreated = time();
             $record->timemodified = time();
             $record->id = $DB->insert_record('aacurachat', $record);
