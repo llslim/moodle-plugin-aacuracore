@@ -36,27 +36,29 @@ if ($dbman->field_exists($table, new xmldb_field('max_turns'))) {
     cli_writeln("Added 'min_turns' column.");
 }
 
-// Ensure mod_aacurachat version is updated in modules table
-if (file_exists($CFG->dirroot . '/mod/aacurachat/version.php')) {
-    $plugin = new stdClass();
-    require($CFG->dirroot . '/mod/aacurachat/version.php');
-    if (isset($plugin->version)) {
-        $mod = $DB->get_record('modules', ['name' => 'aacurachat']);
-        if ($mod) {
-            $DB->set_field('modules', 'version', $plugin->version, ['id' => $mod->id]);
-            cli_writeln("Updated mod_aacurachat module version in DB to {$plugin->version}.");
+try {
+    if (file_exists($CFG->dirroot . '/mod/aacurachat/version.php')) {
+        $plugin = new stdClass();
+        include($CFG->dirroot . '/mod/aacurachat/version.php');
+        if (isset($plugin->version)) {
+            $mod = $DB->get_record('modules', ['name' => 'aacurachat']);
+            if ($mod) {
+                $DB->set_field('modules', 'version', $plugin->version, ['id' => $mod->id]);
+                cli_writeln("Updated mod_aacurachat module version in DB to {$plugin->version}.");
+            }
         }
     }
-}
 
-// Ensure local_aacuracore version is updated in config_plugins
-if (file_exists($CFG->dirroot . '/local/aacuracore/version.php')) {
-    $plugin = new stdClass();
-    require($CFG->dirroot . '/local/aacuracore/version.php');
-    if (isset($plugin->version)) {
-        set_config('version', $plugin->version, 'local_aacuracore');
-        cli_writeln("Updated local_aacuracore version in DB to {$plugin->version}.");
+    if (file_exists($CFG->dirroot . '/local/aacuracore/version.php')) {
+        $plugin = new stdClass();
+        include($CFG->dirroot . '/local/aacuracore/version.php');
+        if (isset($plugin->version)) {
+            set_config('version', $plugin->version, 'local_aacuracore');
+            cli_writeln("Updated local_aacuracore version in DB to {$plugin->version}.");
+        }
     }
+} catch (\Throwable $e) {
+    cli_writeln("Notice: Version sync encountered: " . $e->getMessage());
 }
 
 cli_writeln("Migration complete!");
