@@ -82,6 +82,7 @@ The settings page will show interactive cards that expand/collapse based on your
 
 #### Option A: If "Moodle Core AI" Strategy is Selected
 - **Selected Core AI Provider** (`local_aacuracore/core_ai_selected_provider`): Select the Moodle-configured provider to dispatch prompts to (e.g., `aiprovider_gemini` or `aiprovider_openai`).
+- **Apply generation parameters to Moodle Core AI** (`local_aacuracore/core_ai_apply_generation`): When enabled (default), the temperature/Top_p from the selected **Use Case** profile are written into the active provider's **Generate text** action configuration. Moodle Core AI does not support per-call sampling parameters, so this is the supported way to control sampling on the Core AI path.
 
 #### Option B: If "Google Gemini Direct REST API" Strategy is Selected
 - **API Base URL** (`local_aacuracore/api_base_url`): Set to `https://generativelanguage.googleapis.com/v1beta/openai` (the OpenAI-compatible base URL for Gemini models).
@@ -91,17 +92,46 @@ The settings page will show interactive cards that expand/collapse based on your
 #### Option C: If "ChatGPT (OpenAI Direct API)" Strategy is Selected
 - **API Key** (`local_aacuracore/apikey`): Input your OpenAI API key (e.g., starting with `sk-...`).
 - **Model** (`local_aacuracore/model`): Select `gpt-4o-mini` (recommended for cost-efficiency) or other models like `gpt-4` or `gpt-4-turbo`.
-- **Voice** (`local_aacuracore/voice`): Choose the default Voice for Text-To-Speech features (e.g., *Alloy*, *Echo*, *Fable*, *Onyx*, *Nova*, *Shimmer*).
-- **Case Use** (`local_aacuracore/case`): Choose the temperature profile (e.g. **Chatbot** for low temperature / deterministic responses, or **Balanced** for slightly creative interactions).
 
 ---
 
-### Step 4: Set General Parameters
-1. **Max Tokens** (`local_aacuracore/max_tokens`): Set the output length limit. The default is `200` tokens, which is sufficient for 2-4 sentences from the parent persona.
-2. **Frequency/Presence Penalties**: Keep at `0.0` unless you need to adjust dialogue repetition. Note that direct Gemini REST calls auto-sanitize zero-values to avoid model errors.
-3. **Moodle Modules Integration**: Select which Moodle activity modules (e.g., glossary, quiz, wiki) the core plugin will integrate with.
+### Step 4: Set Global Generation Parameters
+These parameters are **global** — they apply to all AI engines (Moodle Core AI, Google Gemini, and ChatGPT/OpenAI), not just one strategy:
+
+1. **Use Cases** (`local_aacuracore/case`): Choose the temperature/Top_p profile (e.g. **Chatbot** for low temperature / deterministic responses, or **Balanced** for slightly creative interactions). This maps to the `temperature` and `top_p` sampling parameters sent to the LLM.
+2. **Max Tokens** (`local_aacuracore/max_tokens`): Set the output length limit. The default is `200` tokens, which is sufficient for 2-4 sentences from the parent persona.
+3. **Frequency/Presence Penalties** (`local_aacuracore/frequency_penalty`, `local_aacuracore/presence_penalty`): Keep at `0.0` unless you need to adjust dialogue repetition. Note that direct Gemini REST calls auto-sanitize zero-values to avoid model errors.
+4. **Voice** (`local_aacuracore/voice`): Choose the default Voice for Text-To-Speech features (e.g., *Alloy*, *Echo*, *Fable*, *Onyx*, *Nova*, *Shimmer*).
+5. **Minimum student turns before grading** (`local_aacuracore/min_turns`): Set the **minimum** number of student exchanges the conversation must run before it is automatically evaluated and graded. The default is **8**. The dialogue continues for at least this many turns even if a terminal state (RESOLUTION / FAIL_STATE) is reached early. This is the global default; individual activity instances (`mod_aacurachat`) and scenario JSON (`min_turns`) can override it. (Backward-compatible fallback reads from legacy `max_turns`).
+6. **Parent Assertiveness / Aggressiveness** (`local_aacuracore/parent_intensity`): Dial the simulated parent's assertiveness/aggressiveness up or down (Very Low → Very High). This injects a behavior instruction into the persona's system prompt so the LLM plays the parent more passively or more confrontationally. This is the global default; individual activity instances can override it.
+7. **Persona System Prompt Template (Global)** (`local_aacuracore/prompt_template`): A site-wide default LLM system prompt for the persona. Applies to all scenarios unless a scenario defines its own `prompt_template`. You can view how each scenario's prompt resolves in **Diagnostics → Persona System Prompt Preview**.
+8. **Evaluation (Rubric) System Prompt (Global)** (`local_aacuracore/evaluation_prompt_template`): The LLM system prompt for the **second call** that grades the conversation and produces rubric feedback. You can view it in **Diagnostics → Evaluation (Rubric) System Prompt**.
+9. **Scenario Registry & Custom Scenarios**: Click the **🛠️ Manage Personas & Open Scenario Builder** button under Active Scenarios to open the site-wide registry (`/local/aacuracore/scenario_builder.php`). From there, administrators can upload custom scenario `.json` files, view active registered personas, or remove custom scenarios.
+10. **Moodle Modules Integration**: Select which Moodle activity modules (e.g., glossary, quiz, wiki) the core plugin will integrate with.
 
 Click **Save changes** at the bottom of the page to apply the configurations.
+
+---
+
+### The Two AI Prompts (and when they are called)
+
+A simulated roleplay conversation uses **two distinct LLM system prompts**:
+
+1. **Persona System Prompt** (`prompt_template`) — used for the **parent-persona turn generation**.
+   - **When it is called:** once per teacher reply, on every regular turn, to generate the parent's in-character response.
+   - **What it contains:** persona name, backstory, communication style, the parent's intensity, the current dialogue state, and the core concern to convey.
+   - **Contains rubric?** No — the parent persona does not (and should not) know the grading rubric.
+
+2. **Evaluation (Rubric) System Prompt** (`evaluation_prompt_template`) — used for the **rubric feedback generation**.
+   - **When it is called:** once, after the conversation ends — when the student has completed the **minimum** turn count (`min_turns`, default **8**) and the conversation has run its full course (terminal state reached at/after the minimum).
+   - **What it contains:** the teacher's replies only, the `{{rubric}}` criteria (injected from the scenario's per-state `rubric` arrays), the LAFF scoring/feedback instructions, and the HTML output format.
+   - **Contains rubric?** Yes — via the `{{rubric}}` placeholder.
+
+Both templates are editable in Settings and previewed read-only in the **🩺 Diagnostics** tab.
+
+### N-Turn Minimum Verification
+
+The **Diagnostics** tab includes a **🔄 Full Minimum-Turn Simulation** that runs a deterministic (regex-strategy) conversation for the full **N-turn minimum** (default 8) on each persona and records whether the conversation terminates early. Results are persisted to the `local_aacuracore_sim_log` table so admins can review the **most recent run per persona** (shown in the **🗂️ Simulation Log** card). The same simulation is available via the CLI diagnostics tool: `php local/aacuracore/cli/aacuradebug_scenario.php --simulate`.
 
 ---
 

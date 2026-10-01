@@ -13,12 +13,47 @@ Instead of relying on nested conditionals or hardcoded database sequences, a for
 
 ### 2. Strategy Pattern (Response Evaluation & Generation)
 Response generation and rubric scoring logic are decoupled behind a common Strategy interface, permitting runtime strategy toggles:
-* **Pattern Matching Strategy**: Evaluates criteria using regex and token overlaps.
-* **Generative AI Strategy**: Executes direct API integration with Google Gemini.
+* **Pattern Matching Strategy**: Evaluates criteria using regex and token overlaps with multi-turn intent detection and non-repeating candidate pool memory.
+* **Generative AI Strategy**: Executes direct API integration with Google Gemini and OpenAI ChatGPT.
 * **Core AI Subsystem Strategy**: Integrates with Moodle 5.x native `\core_ai\manager` APIs.
 
 ### 3. Frontend Decoupling & Independence (Disclaimer)
 While `local_aacuracore` was historically derived from the legacy `local_geniai` project, it has been completely rewritten and restructured. **There is no dependency** on the legacy `local_geniai` codebase, configuration, or database tables. The core backend communicates with its companion user interface activity module `mod_aacurachat` via clean state data objects and Moodle APIs, allowing separate scaling, updates, and styling.
+
+---
+
+## 🌟 Key Features (Version 2.x)
+
+### 1. 🛠️ Interactive Scenario Builder & Site-Wide Registry
+* **Web UI Builder (`/local/aacuracore/scenario_builder.php`)**: Visual directed-graph scenario builder to design personas, define state nodes (START, EXPLORATION, ESCALATION, CONFUSION, RESOLUTION, FAIL_STATE), attach per-state rubrics, and export valid `.json` files.
+* **Site-Wide Persona Registry**: Upload and register custom `.json` scenarios directly into the database (`local_aacuracore_custom_scenarios`) for immediate site-wide availability across all activities.
+* **AI-Driven Conversational Interviewer**: Instructors can switch the chatbot into an interviewer role to build scenarios conversationally, with clear in-chat explanations of how each detail is used to build the scenario JSON.
+
+### 2. 🧠 Multi-Turn Intent Detection & Anti-Repetition Memory Filter
+* **Deterministic Offline Resilience (`regex_matcher_strategy`)**: Evaluates trainee input across prioritized intent categories (off-topic guardrails, note-taking permission, past AAC tools/PECS, family dynamics, classroom routines, and action planning).
+* **Zero Repetition Guarantee**: Harvests prior conversation trajectory and filters candidate pools dynamically, ensuring the simulated persona never repeats a previously spoken response.
+* **Persona & Pronoun Interpolation**: Automatically inflects grammatical pronouns and interpolates child names harvested directly from scenario backstories.
+
+### 3. 🎯 Minimum Turn Semantics (`min_turns`)
+* Replaces legacy maximum turns with **minimum turn count** semantics: the conversation must run for at least $N$ student turns (default 8) before final rubric evaluation and grading.
+* If a terminal state (RESOLUTION or FAIL_STATE) is reached early, the dialogue cycles gracefully back into EXPLORATION so the persona continues engaging until the minimum turn threshold is satisfied.
+* Fully configurable site-wide, in scenario JSON (`"min_turns": 8`), and as an activity-level override in `mod_aacurachat`.
+
+### 4. 🎚️ Simulated Parent Assertiveness / Intensity Modulation
+* Activity authors can dial simulated parent assertiveness across a 5-point scale: **Very Low** (passive, gentle), **Low**, **Medium** (default), **High** (firm, assertive), and **Very High** (confrontational).
+* Injects behavioral constraints dynamically into the persona system prompt or modulates regex response candidate selection.
+
+### 5. 🌐 Universal LAFF "Don't Cry" Foundation & Role Expansion
+* Anchored in the **LAFF "Don't Cry"** pedagogical framework (**L**isten/Validate, **A**sk open questions, **F**ocus on practical issues, **F**ind first steps; never **C**riticize, **R**eact defensively, or **Y**ack jargon).
+* Generalizes personas beyond parents to simulate any stakeholder: doctors, device manufacturers, AAC users, school administrators, IEP teams, and insurance representatives.
+
+### 6. 📊 Per-State Rubric Scoring & Gradebook Integration
+* Rubric scoring criteria are defined on individual state nodes rather than a monolithic static rubric.
+* Trainee responses are evaluated against specific state learning objectives and computed scores are synced directly to the Moodle Gradebook.
+
+### 7. 🧪 Comprehensive Diagnostics & Crawler Verification
+* **Admin Diagnostics Tab**: Real-time view of connected AI providers, system prompt previews, simulation logs, and active turn configurations.
+* **CLI Scenario Crawler (`aacuradebug_scenario.php`)**: Analyzes all conversation branches, loops, and terminal states, validating state graph integrity.
 
 ---
 
@@ -98,13 +133,15 @@ Refer to these dedicated guides to understand and manage specific components:
 
 | Documentation Link | Description / Scope |
 | :--- | :--- |
-| ⚙️ **[siteadmin_aacura_setup.md](file:///d:/Antigravity1x_backup/windows-projects/AAC-RERC%20Chatbot/siteadmin_aacura_setup.md)** | Step-by-step Moodle site setup guide for AI providers and AACURA settings. |
+| ⚙️ **[siteadmin_aacura_setup.md](siteadmin_aacura_setup.md)** | Step-by-step Moodle site setup guide for AI providers and AACURA settings. |
 | 🤖 **[ai_strategy.md](ai_strategy.md)** | Explains responses, Google Gemini REST compliance, and rubric scoring. |
 | 💬 **[laff_framework_guide.md](laff_framework_guide.md)** | Overview of the LAFF Don't Cry communication strategy and evaluation checks. |
+| 🌐 **[role_expansion_PRD.md](role_expansion_PRD.md)** | Specification for multi-role simulation anchored in universal LAFF rules. |
+| 🎭 **[conversational_roleplay_PRD.md](conversational_roleplay_PRD.md)** | PRD for dynamic non-repeating conversational roleplay and turn minimums. |
+| 📝 **[prompt_template_PRD.md](prompt_template_PRD.md)** | PRD for customizable global persona and evaluation prompt templates. |
+| 🛠️ **[ai_scenario_builder_PRD.md](ai_scenario_builder_PRD.md)** | PRD for the AI-driven interactive scenario builder (interviewer-mode creation). |
 | 💯 **[scoring_explained.md](scoring_explained.md)** | Explains how final grading scores are calculated, deducted, and synchronized with Gradebook. |
 | 📖 **[scenario_creation_guide.md](scenario_creation_guide.md)** | Guidelines on preloaded scenario configurations and custom JSON schema. |
-| � **[ai_scenario_builder_PRD.md](ai_scenario_builder_PRD.md)** | PRD for the AI-driven interactive scenario builder (interviewer-mode scenario creation). |
-| �🧪 **[scenario_test.md](scenario_test.md)** | Diagnostics for crawler routing and dialogue graph checks. |
 | 🧪 **[test_suite_guide.md](test_suite_guide.md)** | Guide for executing PHPUnit test suites and QA validation rules. |
 | 🏷️ **[version_history.md](version_history.md)** | Release notes mapping commit hashes to semantic release versions. |
 | 🛠️ **[REFACTORING_GUIDE.md](REFACTORING_GUIDE.md)** | Rationale and step-by-step notes on the renaming refactoring. |
@@ -113,17 +150,19 @@ Refer to these dedicated guides to understand and manage specific components:
 
 ## 🔄 Automated Database Migration for Existing Sites
 
-For sites upgrading from legacy `local_geniai` / `mod_geniai` installations, run the included CLI migration utility. This renames existing database tables, copies legacy records, and updates settings in `mdl_config_plugins`:
+### 1. Upgrading from Legacy `local_geniai` / `mod_geniai`
+For sites upgrading from legacy installations, run the migration utility to rename tables and update configurations:
 
 ```bash
 php local/aacuracore/cli/migrate_geniai_to_aacura.php
 ```
 
-**Remapped Tables**:
-* `local_geniai_sessions` → `local_aacuracore_sessions`
-* `local_geniai_scenarios` → `local_aacuracore_scenarios`
-* `local_geniai_evaluations` → `local_aacuracore_evaluations`
-* `geniai` → `aacurachat` (activity module table)
+### 2. Upgrading Turn Count Schema (`max_turns` → `min_turns`)
+For existing installations upgrading to version 2.x, run the turn schema migration utility to update `aacurachat` table columns and module versions:
+
+```bash
+php local/aacuracore/cli/migrate_turns_schema.php
+```
 
 ---
 
