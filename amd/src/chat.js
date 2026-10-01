@@ -252,8 +252,15 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                             action: "clear"
                         }
                     }])[0].done(function() {
-                        geniaitextarea.val("$$persona=" + selected + "$$");
-                        sendMessage();
+                        var chatMethod = (release >= 4.2) ? "local_aacuracore_chat_4" : "local_aacuracore_chat_3";
+                        ajax.call([{
+                            methodname: chatMethod,
+                            args: {
+                                message: "$$persona=" + selected + "$$",
+                                courseid: courseid,
+                                lang: chat.lang
+                            }
+                        }]);
                     });
                 }
             });
@@ -299,20 +306,30 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                 sendMessage();
             });
 
-            // Export generated scenario JSON.
-            $("#geniai-export-json").on("click", function(e) {
+            // Export generated scenario JSON (delegated binding for dynamic element).
+            $(document).on("click", "#geniai-export-json", function(e) {
                 if (e) {
                     e.preventDefault();
                 }
-                if (!builderJson) {
+                var targetJson = builderJson || $(this).attr("data-builder-json");
+                if (!targetJson) {
                     notification.exception(new Error("No generated scenario JSON available. Complete the Automated Scenario Builder interview first."));
                     return;
                 }
-                var blob = new Blob([builderJson], {type: "application/json"});
+                var filename = "scenario.json";
+                try {
+                    var parsed = JSON.parse(targetJson);
+                    if (parsed && parsed.scenario_id) {
+                        filename = parsed.scenario_id.toLowerCase().replace(/[^a-z0-9_-]/g, "_") + ".json";
+                    }
+                } catch (err) {
+                    // Fall back to default scenario.json filename.
+                }
+                var blob = new Blob([targetJson], {type: "application/json"});
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement("a");
                 a.href = url;
-                a.download = "scenario.json";
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();

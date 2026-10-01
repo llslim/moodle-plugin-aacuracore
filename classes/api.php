@@ -143,19 +143,11 @@ class api {
             $session->timemodified = time();
             $DB->update_record('local_aacuracore_sessions', $session);
 
-            $startnode = $engine->get_scenario()->get_state('START');
-            $prompt = $startnode['bot_prompt'] ?? '';
-            if (class_exists('\\local_aacuracore\\local\\markdown\\parse_markdown')) {
-                $parsemarkdown = new \local_aacuracore\local\markdown\parse_markdown();
-                $content = $parsemarkdown->markdown_text($prompt);
-            } else {
-                $content = $prompt;
-            }
-
+            // The chatbot waits for an initial message from the user before presenting the core problem.
             return [
                 "result" => "true",
                 "format" => "html",
-                "content" => $content,
+                "content" => "",
             ];
         }
 

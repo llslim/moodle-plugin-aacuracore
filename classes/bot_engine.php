@@ -193,16 +193,7 @@ class bot_engine {
             $record->timemodified = time();
             $record->id = $DB->insert_record('local_aacuracore_sessions', $record);
 
-            // Seed initial parent prompt into messages if scenario defines START state prompt
-            $startnode = $this->scenario->get_state('START');
-            if ($startnode && !empty($startnode['bot_prompt'])) {
-                $msg = new \stdClass();
-                $msg->sessionid = $record->id;
-                $msg->sender = 'system';
-                $msg->message_text = $startnode['bot_prompt'];
-                $msg->timestamp = time();
-                $DB->insert_record('local_aacuracore_messages', $msg);
-            }
+            // The chatbot waits for an initial message from the user before presenting the core problem.
         }
 
         return $record;
@@ -326,16 +317,7 @@ class bot_engine {
         $this->sessionrecord->timemodified = time();
         $DB->update_record('local_aacuracore_sessions', $this->sessionrecord);
 
-        // Seed initial parent prompt into messages if scenario defines START state prompt
-        $startnode = $this->scenario->get_state('START');
-        if ($startnode && !empty($startnode['bot_prompt'])) {
-            $msg = new \stdClass();
-            $msg->sessionid = $this->sessionrecord->id;
-            $msg->sender = 'system';
-            $msg->message_text = $startnode['bot_prompt'];
-            $msg->timestamp = time();
-            $DB->insert_record('local_aacuracore_messages', $msg);
-        }
+        // The chatbot waits for an initial message from the user before presenting the core problem.
     }
 
     /**
@@ -354,6 +336,31 @@ class bot_engine {
 
         // 1. Sanitization Layer
         $cleanedmessage = clean_param($usermessage, PARAM_CLEANHTML);
+
+        // Check if the persona has delivered its initial presenting problem yet.
+        $botmessages = $DB->count_records('local_aacuracore_messages', [
+            'sessionid' => $this->sessionrecord->id,
+            'sender' => 'system'
+        ]);
+
+        // If the bot has not spoken yet:
+        // If the user begins with an initial greeting or intake inquiry (and does not already demonstrate empathy),
+        // deliver the persona's core concern / presenting problem in character from the START node, while
+        // keeping session state in START so the trainee can respond with empathy on the next turn.
+        if ($botmessages === 0) {
+            $hasempathy = $this->strategy->evaluate_input($cleanedmessage, 'empathy_check', $this->scenario);
+            if (!$hasempathy && $this->is_initial_greeting_or_intake($cleanedmessage)) {
+                $this->log_message('user', $cleanedmessage);
+                $messages = $this->get_messages();
+                $botreply = $this->strategy->generate_response($messages, $this->scenario, 'START', $this->parent_intensity);
+                if (empty($botreply)) {
+                    $startnode = $this->scenario->get_state('START');
+                    $botreply = $startnode['bot_prompt'] ?? '';
+                }
+                $this->log_message('system', $botreply);
+                return $botreply;
+            }
+        }
 
         // Log user message in history
         $this->log_message('user', $cleanedmessage);
@@ -503,5 +510,38 @@ class bot_engine {
         $eval->timecreated = time();
 
         return (int)$DB->insert_record('local_aacuracore_evaluations', $eval);
+    }
+
+    /**
+     * Determines whether an initial user message is a greeting or intake question
+     * (e.g., asking what brings the persona in or opening the consultation).
+     *
+     * @param string $message
+     * @return bool
+     */
+    protected function is_initial_greeting_or_intake(string $message): bool {
+        $clean = strtolower(trim($message));
+        if (empty($clean)) {
+            return true;
+        }
+
+        $patterns = [
+            'brings you', 'what brings', 'how can i help',
+            'how may i help', 'what can i do', 'what can we do',
+            'hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening',
+            'welcome', 'thanks for coming', 'thank you for coming', 'thanks for meeting',
+            'thank you for meeting', 'meet with me', 'how are you', 'how is your day',
+            'how are things', 'what is going on', 'what\'s going on',
+            'nice to meet', 'glad we could meet', 'glad you could make it', 'pleasure to meet',
+            'what brings you in'
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (strpos($clean, $pattern) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
