@@ -140,6 +140,7 @@ Refer to these dedicated guides to understand and manage specific components:
 | 🎭 **[conversational_roleplay_PRD.md](conversational_roleplay_PRD.md)** | PRD for dynamic non-repeating conversational roleplay and turn minimums. |
 | 📝 **[prompt_template_PRD.md](prompt_template_PRD.md)** | PRD for customizable global persona and evaluation prompt templates. |
 | 🛠️ **[ai_scenario_builder_PRD.md](ai_scenario_builder_PRD.md)** | PRD for the AI-driven interactive scenario builder (interviewer-mode creation). |
+| 📚 **[per_activity_topic_library_PRD.md](per_activity_topic_library_PRD.md)** | Major release PRD for per-activity configuration (`cmid`), multi-instance course support, and the Topic & Scenario Library. |
 | 💯 **[scoring_explained.md](scoring_explained.md)** | Explains how final grading scores are calculated, deducted, and synchronized with Gradebook. |
 | 📖 **[scenario_creation_guide.md](scenario_creation_guide.md)** | Guidelines on preloaded scenario configurations and custom JSON schema. |
 | 🧪 **[test_suite_guide.md](test_suite_guide.md)** | Guide for executing PHPUnit test suites and QA validation rules. |

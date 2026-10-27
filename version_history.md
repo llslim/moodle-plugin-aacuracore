@@ -1,8 +1,8 @@
 # AACURA Engine Version History & Tagging Log
 
-### Current Version: **v1.5.0-dev**
+### Current Version: **v1.5.0-dev** (Release `2.4.21`)
 
-This log documents the commit history on the `dev` branch, mapping each update to its determined semantic version based on the project's git tagging policy.
+This log documents the commit history across the `dev`, `dev-2.x` (2.x bug fixes), and `dev-3.x` (3.x major feature development) branches, mapping each update to its determined semantic version based on the project's git tagging policy (`main` holds the verified working release synced from `dev`).
 
 ## Release History (Git Tag ↔ Moodle Version ↔ Release Number)
 
