@@ -61,6 +61,18 @@ class bot_engine {
     /** @var string $parentIntensity Assertiveness/aggressiveness level (activity-level override, else global). */
     private string $parent_intensity;
 
+    /** @var string $topic_code Resolved topic code for this activity/scenario. */
+    private string $topic_code = 'parent_counseling';
+
+    /** @var string $generation_case Resolved AI generation profile override. */
+    private string $generation_case = '';
+
+    /** @var string|null $custom_prompt_template Per-activity persona system prompt override. */
+    private ?string $custom_prompt_template = null;
+
+    /** @var string|null $custom_eval_template Per-activity rubric evaluation prompt override. */
+    private ?string $custom_eval_template = null;
+
     /**
      * Constructor.
      *
@@ -74,7 +86,7 @@ class bot_engine {
         $this->userid = $userid;
         $this->courseid = $courseid;
         $this->cmid = $cmid;
-        $this->scenario = scenario_loader::load($scenariocode, $courseid);
+        $this->scenario = scenario_loader::load($scenariocode, $courseid, $cmid);
 
         if ($strategy !== null) {
             $this->strategy = $strategy;
@@ -100,51 +112,98 @@ class bot_engine {
     }
 
     /**
-     * Resolve per-activity min_turns and parent_intensity overrides.
-     *
-     * Reads the aacurachat activity record for this course (when present) and
-     * uses its min_turns/parent_intensity columns if set; otherwise falls back
-     * to the site-wide global settings (or defaults). The turn count acts as a
-     * MINIMUM: the conversation is graded only after this many student turns.
+     * Resolve per-activity configuration overrides using the 4-tier priority hierarchy (PRD FR-10):
+     * 1. Activity Instance Override (cmid)
+     * 2. Scenario JSON Definition
+     * 3. Topic Library Default (local_aacuracore_topics)
+     * 4. Site-Wide Fallback (local_aacuracore)
      */
     private function resolve_activity_settings(): void {
         global $DB;
 
-        // Defaults (global config, then hardcoded).
+        // Tier 4: Site-Wide Fallback defaults.
         $minturns = (int)get_config('local_aacuracore', 'min_turns');
         if ($minturns <= 0) {
             $minturns = (int)get_config('local_aacuracore', 'max_turns');
         }
-        $intensity = get_config('local_aacuracore', 'parent_intensity') ?: 'medium';
         if ($minturns <= 0) {
             $minturns = 8;
         }
+        $intensity = get_config('local_aacuracore', 'parent_intensity') ?: 'medium';
+        $gencase = get_config('local_aacuracore', 'case') ?: '';
+        $promptoverride = null;
+        $evaloverride = null;
 
-        // Try activity-level overrides.
-        if ($this->courseid > 0) {
-            $aacurachat = $DB->get_record('aacurachat', ['course' => $this->courseid]);
-            if ($aacurachat) {
-                if (property_exists($aacurachat, 'min_turns') && !empty($aacurachat->min_turns)) {
-                    $minturns = (int)$aacurachat->min_turns;
-                } else if (property_exists($aacurachat, 'max_turns') && !empty($aacurachat->max_turns)) {
-                    $minturns = (int)$aacurachat->max_turns;
+        // Resolve the aacurachat instance record by cmid first, falling back safely to courseid when cmid === 0.
+        $aacurachat = null;
+        if ($this->cmid > 0) {
+            $cm = get_coursemodule_from_id('aacurachat', $this->cmid, 0, false, IGNORE_MISSING);
+            if ($cm) {
+                $aacurachat = $DB->get_record('aacurachat', ['id' => $cm->instance]);
+            }
+        }
+        if (!$aacurachat && $this->courseid > 0 && $DB->get_manager()->table_exists('aacurachat')) {
+            $records = $DB->get_records('aacurachat', ['course' => $this->courseid], 'id ASC', '*', 0, 1);
+            $aacurachat = reset($records) ?: null;
+        }
+
+        $this->topic_code = (!empty($aacurachat->topiccode))
+            ? strtolower(trim($aacurachat->topiccode))
+            : $this->scenario->get_topic_code();
+
+        // Tier 3: Topic Library Default.
+        if (class_exists('\\local_aacuracore\\library\\topic_library_manager')
+                && \local_aacuracore\library\topic_library_manager::tables_exist()) {
+            $topic = \local_aacuracore\library\topic_library_manager::get_topic_by_code($this->topic_code, $this->courseid);
+            if ($topic) {
+                if (!empty($topic->default_min_turns) && (int)$topic->default_min_turns > 0
+                        && ((int)$topic->default_min_turns !== 8 || $minturns === 8)) {
+                    $minturns = (int)$topic->default_min_turns;
                 }
-                if (property_exists($aacurachat, 'parent_intensity') && !empty($aacurachat->parent_intensity)) {
-                    $intensity = $aacurachat->parent_intensity;
+                if (!empty($topic->default_intensity)
+                        && ($topic->default_intensity !== 'medium' || $intensity === 'medium')) {
+                    $intensity = $topic->default_intensity;
                 }
             }
         }
 
-        // Scenario-level fallback (from the scenario JSON) when no activity override set.
-        if ($minturns === 8 && $this->scenario->get_min_turns() !== null && $this->scenario->get_min_turns() > 0) {
+        // Tier 2: Scenario JSON Definition.
+        if ($this->scenario->get_min_turns() !== null && $this->scenario->get_min_turns() > 0) {
             $minturns = $this->scenario->get_min_turns();
         }
-        if ($intensity === 'medium' && !empty($this->scenario->get_parent_intensity())) {
+        if (!empty($this->scenario->get_parent_intensity())) {
             $intensity = $this->scenario->get_parent_intensity();
+        }
+
+        // Tier 1: Activity Instance Override (cmid).
+        if ($aacurachat) {
+            if (property_exists($aacurachat, 'min_turns') && !empty($aacurachat->min_turns) && (int)$aacurachat->min_turns > 0) {
+                $minturns = (int)$aacurachat->min_turns;
+            } else if (property_exists($aacurachat, 'max_turns') && !empty($aacurachat->max_turns) && (int)$aacurachat->max_turns > 0) {
+                $minturns = (int)$aacurachat->max_turns;
+            }
+            if (property_exists($aacurachat, 'parent_intensity') && !empty($aacurachat->parent_intensity)) {
+                $intensity = $aacurachat->parent_intensity;
+            }
+            if (property_exists($aacurachat, 'generation_case') && !empty($aacurachat->generation_case)) {
+                $gencase = $aacurachat->generation_case;
+            }
+            if (property_exists($aacurachat, 'custom_prompt_template') && !empty($aacurachat->custom_prompt_template)) {
+                $promptoverride = $aacurachat->custom_prompt_template;
+            }
+            if (property_exists($aacurachat, 'custom_eval_template') && !empty($aacurachat->custom_eval_template)) {
+                $evaloverride = $aacurachat->custom_eval_template;
+            }
         }
 
         $this->min_turns = $minturns;
         $this->parent_intensity = $intensity;
+        $this->generation_case = $gencase;
+        $this->custom_prompt_template = $promptoverride;
+        $this->custom_eval_template = $evaloverride;
+
+        prompt_renderer::set_activity_overrides($this->custom_prompt_template, $this->custom_eval_template);
+        api::set_active_generation_case($this->generation_case);
     }
 
     /**
@@ -175,7 +234,36 @@ class bot_engine {
     }
 
     /**
+     * Gets the resolved topic code for this activity/scenario.
+     *
+     * @return string
+     */
+    public function get_topic_code(): string {
+        return $this->topic_code;
+    }
+
+    /**
+     * Gets the resolved AI generation case profile.
+     *
+     * @return string
+     */
+    public function get_generation_case(): string {
+        return $this->generation_case;
+    }
+
+    /**
+     * Gets the active course module ID (cmid).
+     *
+     * @return int
+     */
+    public function get_cmid(): int {
+        return $this->cmid;
+    }
+
+    /**
      * Looks up existing active session or initializes a new state machine session.
+     * Strictly isolates sessions by (userid, cmid, scenariocode) so multi-instance
+     * courses and multi-scenario activities never collide.
      *
      * @param int $userid
      * @param int $courseid
@@ -185,16 +273,14 @@ class bot_engine {
     private function lookup_or_create_session(int $userid, int $courseid, string $scenariocode): \stdClass {
         global $DB;
 
+        $scenariocode = strtolower(trim($scenariocode));
+
         $record = $DB->get_record('local_aacuracore_sessions', [
             'userid' => $userid,
             'courseid' => $courseid,
             'cmid' => $this->cmid,
+            'scenariocode' => $scenariocode,
         ], '*', IGNORE_MULTIPLE);
-
-        if ($record && $record->scenariocode !== $scenariocode) {
-            $record->scenariocode = $scenariocode;
-            $DB->update_record('local_aacuracore_sessions', $record);
-        }
 
         if (!$record) {
             $record = new \stdClass();
@@ -208,6 +294,9 @@ class bot_engine {
             $record->id = $DB->insert_record('local_aacuracore_sessions', $record);
 
             // The chatbot waits for an initial message from the user before presenting the core problem.
+        } else {
+            $record->timemodified = time();
+            $DB->update_record('local_aacuracore_sessions', $record);
         }
 
         return $record;
@@ -477,26 +566,45 @@ class bot_engine {
     }
 
     /**
-     * Programmatically triggers Moodle Gradebook sync updates.
+     * Programmatically triggers Moodle Gradebook sync updates using per-activity cmid
+     * and the activity's configured multi-scenario grading_mode.
      *
      * @param float $finalscore
      */
     private function trigger_gradebook_sync(float $finalscore): void {
         global $CFG, $DB;
 
-        // Trigger standard mod_aacurachat library grading hook
         $libfile = $CFG->dirroot . '/mod/aacurachat/lib.php';
         if (file_exists($libfile)) {
             require_once($libfile);
             if (function_exists('aacurachat_grade_item_update')) {
-                // Fetch course module record
-                $cm = get_coursemodule_from_id('aacurachat', $this->sessionrecord->cmid);
-                if ($cm) {
-                    $aacurachat = $DB->get_record('aacurachat', ['id' => $cm->instance]);
-                    if ($aacurachat) {
+                $aacurachat = null;
+                $cmid = (int)$this->sessionrecord->cmid;
+                if ($cmid > 0) {
+                    $cm = get_coursemodule_from_id('aacurachat', $cmid, 0, false, IGNORE_MISSING);
+                    if ($cm) {
+                        $aacurachat = $DB->get_record('aacurachat', ['id' => $cm->instance]);
+                    }
+                }
+                if (!$aacurachat && $this->courseid > 0 && $DB->get_manager()->table_exists('aacurachat')) {
+                    $records = $DB->get_records('aacurachat', ['course' => $this->courseid], 'id ASC', '*', 0, 1);
+                    $aacurachat = reset($records) ?: null;
+                }
+
+                if ($aacurachat) {
+                    $computedgrade = $finalscore;
+                    if (class_exists('\\local_aacuracore\\library\\topic_library_manager')) {
+                        $computedgrade = \local_aacuracore\library\topic_library_manager::calculate_activity_grade(
+                            $aacurachat,
+                            $cmid,
+                            (int)$this->sessionrecord->userid,
+                            $finalscore
+                        );
+                    }
+                    if ($computedgrade !== null) {
                         $grade = new \stdClass();
                         $grade->userid = $this->sessionrecord->userid;
-                        $grade->rawgrade = $finalscore;
+                        $grade->rawgrade = $computedgrade;
                         aacurachat_grade_item_update($aacurachat, $grade);
                     }
                 }

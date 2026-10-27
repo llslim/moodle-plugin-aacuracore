@@ -1,7 +1,12 @@
 define(["jquery", "core/ajax", "core/notification"], function($, ajax, notification) {
     var chat = {
 
-        init: function(courseid, release) {
+        init: function(courseid, cmid, release) {
+            if (typeof release === "undefined") {
+                release = cmid;
+                cmid = 0;
+            }
+            cmid = parseInt(cmid, 10) || 0;
 
 
             if ($("body.pagelayout-embedded").length) {
@@ -121,6 +126,7 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                             message  : messagesend,
                             audio    : chat.mediaRecordUrl,
                             courseid : courseid,
+                            cmid     : cmid,
                             lang     : chat.lang,
                         }
                     }])[0].done(function(data) {
@@ -222,6 +228,7 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                     methodname: methodname,
                     args: {
                         courseid: courseid,
+                        cmid: cmid,
                         action: "clear"
                     }
                 }])[0].done(function() {
@@ -249,6 +256,7 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                         methodname: methodname,
                         args: {
                             courseid: courseid,
+                            cmid: cmid,
                             action: "clear"
                         }
                     }])[0].done(function() {
@@ -258,6 +266,7 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                             args: {
                                 message: "$$persona=" + selected + "$$",
                                 courseid: courseid,
+                                cmid: cmid,
                                 lang: chat.lang
                             }
                         }]);
@@ -550,6 +559,7 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                     methodname: methodname,
                     args: {
                         courseid: courseid,
+                        cmid: cmid,
                         action: "history"
                     }
                 }])[0].done(function(data) {

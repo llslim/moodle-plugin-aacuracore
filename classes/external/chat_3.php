@@ -45,6 +45,7 @@ class chat_3 extends external_api {
             "courseid" => new external_value(PARAM_TEXT, "The Course ID"),
             "audio" => new external_value(PARAM_RAW, "The message value", VALUE_DEFAULT, null, NULL_ALLOWED),
             "lang" => new external_value(PARAM_RAW, "The language value", VALUE_DEFAULT, null, NULL_ALLOWED),
+            "cmid" => new external_value(PARAM_INT, "The Course Module ID", VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -76,7 +77,7 @@ class chat_3 extends external_api {
      * @throws \coding_exception
      * @throws \dml_exception
      */
-    public static function api($message, $courseid, $audio = null, $lang = null) {
-        return \local_aacuracore\api::chat_api($message, $courseid, $audio, $lang);
+    public static function api($message, $courseid, $audio = null, $lang = null, $cmid = 0) {
+        return \local_aacuracore\api::chat_api($message, $courseid, $audio, $lang, (int)$cmid);
     }
 }

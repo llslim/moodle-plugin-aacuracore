@@ -95,16 +95,40 @@ Write a warm, personalized thank-you message (2-3 sentences) addressed to the tr
 <p>Suggest to click <strong>Clear Chat</strong> button to restart if needed</p>
 EOT;
 
+    /** @var string|null Active per-activity persona prompt template override */
+    private static ?string $activity_prompt_override = null;
+
+    /** @var string|null Active per-activity evaluation prompt template override */
+    private static ?string $activity_eval_override = null;
+
+    /**
+     * Sets per-activity prompt template overrides for the active request/turn.
+     *
+     * @param string|null $promptoverride
+     * @param string|null $evaloverride
+     * @return void
+     */
+    public static function set_activity_overrides(?string $promptoverride = null, ?string $evaloverride = null): void {
+        self::$activity_prompt_override = (!empty($promptoverride) && trim($promptoverride) !== '') ? $promptoverride : null;
+        self::$activity_eval_override = (!empty($evaloverride) && trim($evaloverride) !== '') ? $evaloverride : null;
+    }
+
     /**
      * Resolve the effective evaluation (rubric) prompt template.
      *
      * Fallback chain:
-     *   1. Site-wide global setting local_aacuracore/evaluation_prompt_template
-     *   2. Hardcoded DEFAULT_EVALUATION_TEMPLATE constant
+     *   1. Per-activity override (custom_eval_template)
+     *   2. Site-wide global setting local_aacuracore/evaluation_prompt_template
+     *   3. Hardcoded DEFAULT_EVALUATION_TEMPLATE constant
      *
+     * @param string|null $activityoverride Optional explicit activity override
      * @return string The evaluation template to render.
      */
-    public static function resolve_evaluation_template(): string {
+    public static function resolve_evaluation_template(?string $activityoverride = null): string {
+        $override = $activityoverride ?? self::$activity_eval_override;
+        if (!empty($override) && trim($override) !== '') {
+            return $override;
+        }
         $globalsetting = get_config('local_aacuracore', 'evaluation_prompt_template');
         if (!empty($globalsetting)) {
             return $globalsetting;
@@ -136,15 +160,21 @@ EOT;
     /**
      * Resolve the effective prompt template for a scenario.
      *
-     * Fallback chain:
-     *   1. Scenario's embedded prompt_template (most specific)
-     *   2. Site-wide global setting local_aacuracore/prompt_template
-     *   3. Hardcoded DEFAULT_TEMPLATE constant
+     * Priority hierarchy (PRD FR-10):
+     *   1. Per-Activity Instance Override (custom_prompt_template on cmid)
+     *   2. Scenario's embedded prompt_template
+     *   3. Site-wide global setting local_aacuracore/prompt_template
+     *   4. Hardcoded DEFAULT_TEMPLATE constant
      *
      * @param scenario_definition $scenario The active scenario.
+     * @param string|null $activityoverride Optional explicit activity override.
      * @return string The template to render.
      */
-    public static function resolve_template(scenario_definition $scenario): string {
+    public static function resolve_template(scenario_definition $scenario, ?string $activityoverride = null): string {
+        $override = $activityoverride ?? self::$activity_prompt_override;
+        if (!empty($override) && trim($override) !== '') {
+            return $override;
+        }
         $template = $scenario->get_prompt_template();
         if (!empty($template)) {
             return $template;

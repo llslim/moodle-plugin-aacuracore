@@ -51,6 +51,7 @@ class history_4 extends external_api {
         return new external_function_parameters([
             "courseid" => new external_value(PARAM_TEXT, "The Course ID"),
             "action" => new external_value(PARAM_TEXT, "The action"),
+            "cmid" => new external_value(PARAM_INT, "The Course Module ID", VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -74,7 +75,7 @@ class history_4 extends external_api {
      *
      * @return array
      */
-    public static function api($courseid, $action) {
-        return \local_aacuracore\api::history_api($courseid, $action);
+    public static function api($courseid, $action, $cmid = 0) {
+        return \local_aacuracore\api::history_api($courseid, $action, (int)$cmid);
     }
 }

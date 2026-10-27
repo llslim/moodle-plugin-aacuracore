@@ -27,32 +27,106 @@ defined('MOODLE_INTERNAL') || die;
  */
 class api {
 
+    /** @var string Active per-activity generation profile override */
+    private static string $active_generation_case = '';
+
+    /**
+     * Sets the active per-activity generation case override.
+     *
+     * @param string $case
+     * @return void
+     */
+    public static function set_active_generation_case(string $case = ''): void {
+        self::$active_generation_case = trim($case);
+    }
+
+    /**
+     * Resolves the aacurachat activity instance and course module ID (cmid).
+     * Strictly uses $cmid when provided (> 0), with a safe non-throwing fallback
+     * to the first activity in $courseid for legacy callers omitting cmid.
+     *
+     * @param int $courseid
+     * @param int $cmid
+     * @return array [\stdClass|null $aacurachat, int $resolvedcmid]
+     */
+    public static function resolve_activity_and_cmid(int $courseid, int $cmid = 0): array {
+        global $DB;
+
+        $aacurachat = null;
+        $resolvedcmid = (int)$cmid;
+
+        if ($resolvedcmid > 0) {
+            $cm = get_coursemodule_from_id('aacurachat', $resolvedcmid, 0, false, IGNORE_MISSING);
+            if ($cm && $DB->get_manager()->table_exists('aacurachat')) {
+                $aacurachat = $DB->get_record('aacurachat', ['id' => $cm->instance]);
+                if ($courseid <= 0) {
+                    $courseid = (int)$cm->course;
+                }
+            }
+        }
+
+        if (!$aacurachat && $courseid > 0 && $DB->get_manager()->table_exists('aacurachat')) {
+            $records = $DB->get_records('aacurachat', ['course' => $courseid], 'id ASC', '*', 0, 1);
+            $aacurachat = reset($records) ?: null;
+            if ($aacurachat && $resolvedcmid <= 0) {
+                $cm = get_coursemodule_from_instance('aacurachat', $aacurachat->id, $courseid, false, IGNORE_MISSING);
+                $resolvedcmid = $cm ? (int)$cm->id : 0;
+            }
+        }
+
+        return [$aacurachat ?: null, $resolvedcmid];
+    }
+
+    /**
+     * Finds the most recently active non-builder session for a user in a specific activity instance.
+     *
+     * @param int $userid
+     * @param int $courseid
+     * @param int $cmid
+     * @return \stdClass|null
+     */
+    public static function get_latest_active_session(int $userid, int $courseid, int $cmid): ?\stdClass {
+        global $DB;
+
+        $sql = "SELECT *
+                  FROM {local_aacuracore_sessions}
+                 WHERE userid = :userid
+                   AND courseid = :courseid
+                   AND cmid = :cmid
+                   AND scenariocode <> :buildersentinel
+              ORDER BY timemodified DESC, id DESC";
+        $records = $DB->get_records_sql($sql, [
+            'userid' => $userid,
+            'courseid' => $courseid,
+            'cmid' => $cmid,
+            'buildersentinel' => '__builder__',
+        ], 0, 1);
+
+        return reset($records) ?: null;
+    }
+
     /**
      * History api function.
      *
      * @param int $courseid
      * @param string $action
+     * @param int $cmid
      * @return array
      *
      * @throws \dml_exception
      */
-    public static function history_api($courseid, $action) {
+    public static function history_api($courseid, $action, $cmid = 0) {
         global $DB, $USER;
 
-        $aacurachat = $DB->get_record("aacurachat", ["course" => $courseid]);
-        $cmid = 0;
-        if ($aacurachat) {
-            $cm = get_coursemodule_from_instance('aacurachat', $aacurachat->id);
-            $cmid = $cm ? $cm->id : 0;
-        }
+        [$aacurachat, $cmid] = self::resolve_activity_and_cmid((int)$courseid, (int)$cmid);
 
         $scenariocode = $aacurachat->scenariocode ?? 'anna';
-        $activesession = $DB->get_record('local_aacuracore_sessions', ['userid' => $USER->id, 'courseid' => $courseid, 'cmid' => $cmid], '*', IGNORE_MULTIPLE);
+        $activesession = self::get_latest_active_session((int)$USER->id, (int)$courseid, $cmid);
         if ($activesession) {
             $scenariocode = $activesession->scenariocode;
         }
 
-        $engine = new \local_aacuracore\bot_engine($USER->id, $courseid, $cmid, $scenariocode);
+        $engine = new \local_aacuracore\bot_engine($USER->id, (int)$courseid, $cmid, $scenariocode);
 
         if ($action === "clear") {
             $engine->reset_session();
@@ -93,12 +167,13 @@ class api {
      * @param int $courseid
      * @param null $audio
      * @param string $lang
+     * @param int $cmid
      * @return array
      *
      * @throws \coding_exception
      * @throws \dml_exception
      */
-    public static function chat_api($message, $courseid, $audio = null, $lang = "en") {
+    public static function chat_api($message, $courseid, $audio = null, $lang = "en", $cmid = 0) {
         global $DB, $USER;
 
         $maxMessageLength = 2500;
@@ -124,17 +199,12 @@ class api {
 
         $cleanedMessage = strip_tags(trim($message));
 
-        $aacurachat = $DB->get_record("aacurachat", ["course" => $courseid]);
-        $cmid = 0;
-        if ($aacurachat) {
-            $cm = get_coursemodule_from_instance('aacurachat', $aacurachat->id);
-            $cmid = $cm ? $cm->id : 0;
-        }
+        [$aacurachat, $cmid] = self::resolve_activity_and_cmid((int)$courseid, (int)$cmid);
 
         // Intercept special persona change command
         if (preg_match('/^\$\$persona=([a-zA-Z0-9_\-]+)\$\$$/', $cleanedMessage, $matches)) {
-            $selected = $matches[1];
-            $engine = new \local_aacuracore\bot_engine($USER->id, $courseid, $cmid, $selected);
+            $selected = strtolower(trim($matches[1]));
+            $engine = new \local_aacuracore\bot_engine($USER->id, (int)$courseid, $cmid, $selected);
             $engine->reset_session();
 
             $session = $engine->get_session_record();
@@ -160,15 +230,34 @@ class api {
             ];
         }
 
-        // Route interactive builder turns (history is loaded from the session).
+        // Route interactive builder turns using an isolated '__builder__' session record so active persona sessions are never corrupted.
         if (preg_match('/^\^builder_turn\$\$(.*)$/s', $cleanedMessage, $bt)) {
-            $mood = 'builder';
-            $state = $DB->get_record('local_aacuracore_sessions', ['userid' => $USER->id, 'courseid' => $courseid, 'cmid' => $cmid], '*', IGNORE_MULTIPLE);
+            $builderinput = $bt[1];
+            $state = $DB->get_record('local_aacuracore_sessions', [
+                'userid' => $USER->id,
+                'courseid' => (int)$courseid,
+                'cmid' => $cmid,
+                'scenariocode' => '__builder__',
+            ], '*', IGNORE_MULTIPLE);
+
+            if (!$state) {
+                $state = (object)[
+                    'userid' => $USER->id,
+                    'courseid' => (int)$courseid,
+                    'cmid' => $cmid,
+                    'scenariocode' => '__builder__',
+                    'current_state' => 'START',
+                    'timecreated' => time(),
+                    'timemodified' => time(),
+                ];
+                $state->id = $DB->insert_record('local_aacuracore_sessions', $state);
+            } else if ($builderinput === '__start__') {
+                $DB->delete_records('local_aacuracore_messages', ['sessionid' => $state->id]);
+            }
 
             // Gather builder history from the session messages (system sender = builder).
             $history = [];
-            $builderinput = $bt[1];
-            $historyrows = $DB->get_records('local_aacuracore_messages', ['sessionid' => $state ? $state->id : 0], 'id ASC');
+            $historyrows = $DB->get_records('local_aacuracore_messages', ['sessionid' => $state->id], 'id ASC');
             if ($historyrows) {
                 foreach ($historyrows as $row) {
                     $role = ($row->sender === 'user') ? 'author' : 'bot';
@@ -176,12 +265,12 @@ class api {
                 }
             }
 
-$result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builderinput);
+            $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builderinput);
             $reply = $result['reply'];
 
-            // Persist author message + bot reply to a transient builder session.
+            // Persist author message + bot reply to the transient builder session.
             // Skip the __start__ sentinel so it doesn't appear as a user answer.
-            if ($state && $builderinput !== '__start__') {
+            if ($builderinput !== '__start__') {
                 $DB->insert_record('local_aacuracore_messages', (object)[
                     'sessionid' => $state->id,
                     'sender' => 'user',
@@ -189,14 +278,12 @@ $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builder
                     'timestamp' => time(),
                 ]);
             }
-            if ($state) {
-                $DB->insert_record('local_aacuracore_messages', (object)[
-                    'sessionid' => $state->id,
-                    'sender' => 'system',
-                    'message_text' => $reply,
-                    'timestamp' => time(),
-                ]);
-            }
+            $DB->insert_record('local_aacuracore_messages', (object)[
+                'sessionid' => $state->id,
+                'sender' => 'system',
+                'message_text' => $reply,
+                'timestamp' => time(),
+            ]);
 
             // If a valid scenario JSON was produced, embed it for export.
             if (!empty($result['json'])) {
@@ -205,7 +292,7 @@ $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builder
                     "result" => "true",
                     "format" => "html",
                     "builder_json" => $json,
-                    "content" => $reply . "\n\n<div class='alert alert-success'>✅ Scenario generated! Use the 'Export JSON' action to download it.</div>",
+                    "content" => $reply . "\n\n<div class='alert alert-success'>✅ Scenario generated! Use the 'Export JSON' or 'Save to Activity & Topic Library' action below.</div>",
                 ];
             }
 
@@ -221,8 +308,18 @@ $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builder
         $check = self::chat_completions($moderationPrompt);
         $decision = strtolower(trim($check["choices"][0]["message"]["content"] ?? "no"));
 
+        // Load active scenario from DB or fallback
+        $activescenariocode = 'anna';
+        if ($aacurachat && !empty($aacurachat->scenariocode)) {
+            $activescenariocode = $aacurachat->scenariocode;
+        }
+        $activesession = self::get_latest_active_session((int)$USER->id, (int)$courseid, $cmid);
+        if ($activesession) {
+            $activescenariocode = $activesession->scenariocode;
+        }
+
         if ($decision === "yes") {
-            $engine = new \local_aacuracore\bot_engine($USER->id, $courseid, $cmid, 'anna');
+            $engine = new \local_aacuracore\bot_engine($USER->id, (int)$courseid, $cmid, $activescenariocode);
             $engine->reset_session();
             return [
                 "result" => "true",
@@ -231,18 +328,8 @@ $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builder
             ];
         }
 
-        // Load active scenario from DB or fallback
-        $activescenariocode = 'anna';
-        if ($aacurachat && !empty($aacurachat->scenariocode)) {
-            $activescenariocode = $aacurachat->scenariocode;
-        }
-        $activesession = $DB->get_record('local_aacuracore_sessions', ['userid' => $USER->id, 'courseid' => $courseid, 'cmid' => $cmid], '*', IGNORE_MULTIPLE);
-        if ($activesession) {
-            $activescenariocode = $activesession->scenariocode;
-        }
-
         // Instantiate core engine and run active turn logic
-        $engine = new \local_aacuracore\bot_engine($USER->id, $courseid, $cmid, $activescenariocode);
+        $engine = new \local_aacuracore\bot_engine($USER->id, (int)$courseid, $cmid, $activescenariocode);
         $botreply = $engine->process_user_turn($cleanedMessage);
 
         // If botreply already contains HTML tags (e.g. <h3>, <ul>, <br>), pass through directly; otherwise parse markdown.
@@ -472,10 +559,13 @@ $result = \local_aacuracore\scenario_builder_ai::process_turn($history, $builder
      * parameters. These are used as the defaults for the direct REST path and
      * as the fallback for the Moodle Core AI path when no manual override is set.
      *
+     * @param string|null $caseoverride Optional explicit generation case override
      * @return array {temperature: float, top_p: float}
      */
-    public static function get_generation_params(): array {
-        $case = get_config("local_aacuracore", "case");
+    public static function get_generation_params(?string $caseoverride = null): array {
+        $case = !empty($caseoverride)
+            ? $caseoverride
+            : (!empty(self::$active_generation_case) ? self::$active_generation_case : get_config("local_aacuracore", "case"));
         switch ($case) {
             case "creative":
                 return ['temperature' => .7, 'top_p' => .8];

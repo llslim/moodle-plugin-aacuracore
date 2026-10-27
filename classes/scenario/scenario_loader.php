@@ -33,23 +33,50 @@ defined('MOODLE_INTERNAL') || die;
 class scenario_loader {
 
     /**
-     * Loads a scenario by ID/code.
+     * Loads a scenario by ID/code with per-activity (cmid) and Topic/Scenario Library resolution.
      *
-     * Order of resolution:
-     * 1. Dynamic custom scenarios registered in local_aacuracore_custom_scenarios DB table.
-     * 2. Physical JSON file in local/aacuracore/scenarios/<id>.json.
-     * 3. Preloaded static PHP fallback definitions (Anna, Brianna, Cathy, Mary).
+     * Order of resolution (PRD FR-12):
+     * 1. Activity Filearea (mod_aacurachat / scenariofile) for $cmid.
+     * 2. Scenario Library DB (local_aacuracore_scenarios) matching $scenarioid (activity -> course -> system scope).
+     * 3. Legacy custom scenarios table (local_aacuracore_custom_scenarios).
+     * 4. Physical JSON file in local/aacuracore/scenarios/<id>.json.
+     * 5. Preloaded static PHP fallback definitions (Anna, Brianna, Cathy, Mary).
      *
      * @param string $scenarioid
      * @param int $courseid
+     * @param int $cmid
      * @return scenario_definition
      */
-    public static function load(string $scenarioid, int $courseid = 0): scenario_definition {
+    public static function load(string $scenarioid, int $courseid = 0, int $cmid = 0): scenario_definition {
         global $DB, $CFG;
 
         $scenarioid = strtolower(trim($scenarioid));
 
-        // 1. Check custom DB table for uploaded JSON profiles
+        // 1. Check Activity Filearea (mod_aacurachat / scenariofile) for $cmid.
+        if ($cmid > 0) {
+            $fileloaded = self::load_from_activity_filearea($scenarioid, $cmid);
+            if ($fileloaded !== null) {
+                return $fileloaded;
+            }
+        }
+
+        // 2. Check unified Scenario Library DB table (local_aacuracore_scenarios).
+        try {
+            if (class_exists('\\local_aacuracore\\library\\topic_library_manager')
+                    && \local_aacuracore\library\topic_library_manager::tables_exist()) {
+                $librec = \local_aacuracore\library\topic_library_manager::get_scenario_record($scenarioid, $courseid, $cmid);
+                if ($librec && !empty($librec->json_data)) {
+                    $json = json_decode($librec->json_data, true);
+                    if (is_array($json)) {
+                        return self::from_array($json);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fall through if library lookup fails.
+        }
+
+        // 3. Check legacy custom DB table for uploaded JSON profiles.
         try {
             if ($DB && $DB->get_manager()->table_exists('local_aacuracore_custom_scenarios')) {
                 $custom = $DB->get_record('local_aacuracore_custom_scenarios', ['scenariocode' => $scenarioid]);
@@ -64,7 +91,7 @@ class scenario_loader {
             // Fall through if DB table check fails
         }
 
-        // 2. Check local JSON file
+        // 4. Check local JSON file
         $jsonfile = $CFG->dirroot . '/local/aacuracore/scenarios/' . $scenarioid . '.json';
         if (file_exists($jsonfile)) {
             $content = file_get_contents($jsonfile);
@@ -74,7 +101,7 @@ class scenario_loader {
             }
         }
 
-        // 3. Fallback to preloaded profiles
+        // 5. Fallback to preloaded profiles
         switch ($scenarioid) {
             case 'anna':
                 return self::get_anna_profile();
@@ -86,6 +113,53 @@ class scenario_loader {
             default:
                 return self::get_default_profile($scenarioid);
         }
+    }
+
+    /**
+     * Attempts to load a scenario definition from the mod_aacurachat 'scenariofile' filearea for a given cmid.
+     *
+     * @param string $scenarioid Requested scenario code (matches 'custom' or the uploaded JSON's scenario_id)
+     * @param int $cmid Course module ID
+     * @return scenario_definition|null
+     */
+    public static function load_from_activity_filearea(string $scenarioid, int $cmid): ?scenario_definition {
+        if ($cmid <= 0 || !function_exists('get_file_storage')) {
+            return null;
+        }
+
+        try {
+            $context = \context_module::instance($cmid, IGNORE_MISSING);
+            if (!$context) {
+                return null;
+            }
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'mod_aacurachat', 'scenariofile', 0, 'id DESC', false);
+            if (empty($files)) {
+                return null;
+            }
+
+            foreach ($files as $file) {
+                $content = $file->get_content();
+                if (empty($content)) {
+                    continue;
+                }
+                $json = json_decode($content, true);
+                if (!is_array($json)) {
+                    continue;
+                }
+                $uploadedid = strtolower(trim($json['scenario_id'] ?? 'custom'));
+                if ($scenarioid === 'custom' || $scenarioid === $uploadedid) {
+                    if (empty($json['scenario_id'])) {
+                        $json['scenario_id'] = 'custom';
+                    }
+                    return self::from_array($json);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore file storage errors and allow normal fallback.
+        }
+
+        return null;
     }
 
     /**
