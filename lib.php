@@ -36,3 +36,36 @@ use local_aacuracore\core_hook_output;
 function local_aacuracore_before_footer() {
     core_hook_output::before_footer_html_generation();
 }
+
+/**
+ * Hook to extend the Moodle signup form with a secret registration key.
+ *
+ * @param \MoodleQuickForm $mform
+ */
+function local_aacuracore_extend_signup_form($mform) {
+    $expected_key = get_config('local_aacuracore', 'registration_secret_key');
+    if (!empty($expected_key)) {
+        $mform->addElement('header', 'registration_key_header', get_string('registration_key_header', 'local_aacuracore'));
+        $mform->addElement('text', 'registration_key', get_string('registration_key', 'local_aacuracore'), ['size' => 30]);
+        $mform->setType('registration_key', PARAM_RAW_TRIMMED);
+        $mform->addRule('registration_key', get_string('registration_key_required', 'local_aacuracore'), 'required', null, 'client');
+        $mform->addHelpButton('registration_key', 'registration_key', 'local_aacuracore');
+    }
+}
+
+/**
+ * Validate the secret registration key submitted on the signup form.
+ *
+ * @param array $data
+ * @return array
+ */
+function local_aacuracore_validate_extend_signup_form($data) {
+    $errors = [];
+    $expected_key = get_config('local_aacuracore', 'registration_secret_key');
+    if (!empty($expected_key)) {
+        if (empty($data['registration_key']) || trim($data['registration_key']) !== trim($expected_key)) {
+            $errors['registration_key'] = get_string('registration_key_invalid', 'local_aacuracore');
+        }
+    }
+    return $errors;
+}

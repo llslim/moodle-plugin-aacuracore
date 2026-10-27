@@ -203,4 +203,13 @@ $string['core_ai_selected_provider_desc'] = 'Select which registered Moodle Core
 $string['topic_library_heading'] = 'Topic & Scenario Library (System & Course Scopes)';
 $string['topic_library_desc'] = 'In AACURA v3.0, topics and scenarios are managed per activity via the Topic & Scenario Library. System-scope topics and scenarios are available across all courses; course-scope scenarios created by instructors can be promoted to the System Library by a Site Administrator.';
 
+$string['registration_key_header'] = 'Account Invitation & Verification';
+$string['registration_key'] = 'Registration Secret Key';
+$string['registration_key_help'] = 'An authorized invitation secret key is required to register an account on LL Slim Learn. Please contact Kevin Williams (llslim@gmail.com) to receive an invitation key.';
+$string['registration_key_required'] = 'A valid registration secret key is required to create an account.';
+$string['registration_key_invalid'] = 'The registration secret key you entered is invalid. Please verify your key or contact Kevin Williams (llslim@gmail.com).';
+$string['registration_secret_key'] = 'Account Registration Secret Key';
+$string['registration_secret_key_desc'] = 'Secret key required for new users to register an account on the signup form (/login/signup.php). If left blank, no secret key will be required.';
+
+
 

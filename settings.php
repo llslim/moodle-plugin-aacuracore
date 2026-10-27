@@ -598,4 +598,19 @@ if ($hassiteconfig) {
         $models
     ));
 
+    // SITE ACCESS & REGISTRATION SECURITY
+    $settings->add(new admin_setting_heading(
+        'registration_security_heading',
+        '🔐 Site Registration Security',
+        'Controls invitation keys required for new users when creating an account on the site signup form.'
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_aacuracore/registration_secret_key',
+        get_string('registration_secret_key', 'local_aacuracore'),
+        get_string('registration_secret_key_desc', 'local_aacuracore'),
+        'CIRT2027',
+        PARAM_TEXT
+    ));
+
     }
