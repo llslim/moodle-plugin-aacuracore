@@ -283,5 +283,76 @@ function xmldb_local_aacuracore_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026092401, 'local', 'aacuracore');
     }
 
+    if ($oldversion < 2026110100) {
+        // 1. Create local_aacuracore_topics table.
+        $topicstable = new xmldb_table('local_aacuracore_topics');
+        $topicstable->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $topicstable->add_field('topiccode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null);
+        $topicstable->add_field('title', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $topicstable->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $topicstable->add_field('default_role_type', XMLDB_TYPE_CHAR, '50', null, null, null, 'parent');
+        $topicstable->add_field('default_min_turns', XMLDB_TYPE_INTEGER, '6', null, null, null, '8');
+        $topicstable->add_field('default_intensity', XMLDB_TYPE_CHAR, '20', null, null, null, 'medium');
+        $topicstable->add_field('scope', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'system');
+        $topicstable->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $topicstable->add_field('visible', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1');
+        $topicstable->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $topicstable->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $topicstable->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $topicstable->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $topicstable->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $topicstable->add_index('topiccode_courseid_uq', XMLDB_INDEX_UNIQUE, ['topiccode', 'courseid']);
+        $topicstable->add_index('scope_courseid_visible_idx', XMLDB_INDEX_NOTUNIQUE, ['scope', 'courseid', 'visible']);
+
+        if (!$dbman->table_exists($topicstable)) {
+            $dbman->create_table($topicstable);
+        }
+
+        // 2. Create local_aacuracore_scenarios table.
+        $scenariostable = new xmldb_table('local_aacuracore_scenarios');
+        $scenariostable->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $scenariostable->add_field('scenariocode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null);
+        $scenariostable->add_field('topicid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('topiccode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'parent_counseling');
+        $scenariostable->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $scenariostable->add_field('role_type', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'parent');
+        $scenariostable->add_field('role_label', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'Parent Persona');
+        $scenariostable->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $scenariostable->add_field('json_data', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $scenariostable->add_field('is_builtin', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('scope', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'system');
+        $scenariostable->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('visible', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1');
+        $scenariostable->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $scenariostable->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $scenariostable->add_key('topic_fk', XMLDB_KEY_FOREIGN, ['topicid'], 'local_aacuracore_topics', ['id']);
+        $scenariostable->add_index('scenariocode_course_cm_uq', XMLDB_INDEX_UNIQUE, ['scenariocode', 'courseid', 'cmid']);
+        $scenariostable->add_index('topiccode_visible_idx', XMLDB_INDEX_NOTUNIQUE, ['topiccode', 'visible']);
+
+        if (!$dbman->table_exists($scenariostable)) {
+            $dbman->create_table($scenariostable);
+        }
+
+        // 3. Add composite index on local_aacuracore_sessions (userid, cmid, scenariocode).
+        $sessionstable = new xmldb_table('local_aacuracore_sessions');
+        if ($dbman->table_exists($sessionstable)) {
+            $sessionidx = new xmldb_index('userid_cmid_scenariocode_idx', XMLDB_INDEX_NOTUNIQUE, ['userid', 'cmid', 'scenariocode']);
+            if (!$dbman->index_exists($sessionstable, $sessionidx)) {
+                $dbman->add_index($sessionstable, $sessionidx);
+            }
+        }
+
+        // 4. Seed default Topics & Scenarios, migrate custom scenarios, and backfill historical session cmids.
+        require_once(__DIR__ . '/../classes/library/topic_library_manager.php');
+        \local_aacuracore\library\topic_library_manager::seed_defaults();
+        \local_aacuracore\library\topic_library_manager::backfill_session_cmids();
+
+        upgrade_plugin_savepoint(true, 2026110100, 'local', 'aacuracore');
+    }
+
     return true;
 }

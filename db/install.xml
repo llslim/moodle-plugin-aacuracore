@@ -50,7 +50,7 @@
                 <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
                 <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
                 <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-                <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Course module ID of mod_geniai instance"/>
+                <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Course module ID of mod_aacurachat instance"/>
                 <FIELD NAME="scenariocode" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
                 <FIELD NAME="current_state" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="START" SEQUENCE="false"/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -59,6 +59,9 @@
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
             </KEYS>
+            <INDEXES>
+                <INDEX NAME="userid_cmid_scenariocode_idx" UNIQUE="false" FIELDS="userid, cmid, scenariocode"/>
+            </INDEXES>
         </TABLE>
         <TABLE NAME="local_aacuracore_messages" COMMENT="Stores full text transcripts for evaluation and grade reviews">
             <FIELDS>
@@ -113,6 +116,74 @@
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
                 <KEY NAME="session_fk" TYPE="foreign" FIELDS="sessionid" REFTABLE="local_aacuracore_sessions" REFFIELDS="id"/>
             </KEYS>
+        </TABLE>
+        <TABLE NAME="local_aacuracore_sim_log" COMMENT="Stores full minimum-turn simulation diagnostic logs">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="scenariocode" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="minturns" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="8" SEQUENCE="false"/>
+                <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="detail" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+                <FIELD NAME="created" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
+        <TABLE NAME="local_aacuracore_topics" COMMENT="Stores clinical topics for the AACURA Topic and Scenario Library">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="topiccode" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+                <FIELD NAME="default_role_type" TYPE="char" LENGTH="50" NOTNULL="false" DEFAULT="parent" SEQUENCE="false"/>
+                <FIELD NAME="default_min_turns" TYPE="int" LENGTH="6" NOTNULL="false" DEFAULT="8" SEQUENCE="false"/>
+                <FIELD NAME="default_intensity" TYPE="char" LENGTH="20" NOTNULL="false" DEFAULT="medium" SEQUENCE="false"/>
+                <FIELD NAME="scope" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="system" SEQUENCE="false"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="visible" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+                <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="topiccode_courseid_uq" UNIQUE="true" FIELDS="topiccode, courseid"/>
+                <INDEX NAME="scope_courseid_visible_idx" UNIQUE="false" FIELDS="scope, courseid, visible"/>
+            </INDEXES>
+        </TABLE>
+        <TABLE NAME="local_aacuracore_scenarios" COMMENT="Unified library storing built-in and custom scenarios mapped to a single topic">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="scenariocode" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="topicid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="topiccode" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="parent_counseling" SEQUENCE="false"/>
+                <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="role_type" TYPE="char" LENGTH="50" NOTNULL="true" DEFAULT="parent" SEQUENCE="false"/>
+                <FIELD NAME="role_label" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="Parent Persona" SEQUENCE="false"/>
+                <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+                <FIELD NAME="json_data" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="is_builtin" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="scope" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="system" SEQUENCE="false"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="visible" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+                <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="topic_fk" TYPE="foreign" FIELDS="topicid" REFTABLE="local_aacuracore_topics" REFFIELDS="id"/>
+            </KEYS>
+            <INDEXES>
+                <INDEX NAME="scenariocode_course_cm_uq" UNIQUE="true" FIELDS="scenariocode, courseid, cmid"/>
+                <INDEX NAME="topiccode_visible_idx" UNIQUE="false" FIELDS="topiccode, visible"/>
+            </INDEXES>
         </TABLE>
     </TABLES>
 </XMLDB>

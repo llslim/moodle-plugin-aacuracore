@@ -50,6 +50,9 @@ class scenario_definition {
     /** @var string|null Optional parent intensity/assertiveness level. */
     private $parentintensity;
 
+    /** @var array|null Optional topic metadata (code, title) */
+    private $topic;
+
     /**
      * Constructor.
      *
@@ -61,9 +64,11 @@ class scenario_definition {
      * @param array|null $role Optional role metadata
      * @param int|null $minturns Optional minimum student turn count before grading
      * @param string|null $parentintensity Optional parent assertiveness level
+     * @param array|null $topic Optional topic metadata (code, title)
      */
     public function __construct(string $id, array $persona, array $learningobjectives, array $states,
-            ?string $prompttemplate = null, ?array $role = null, ?int $minturns = null, ?string $parentintensity = null) {
+            ?string $prompttemplate = null, ?array $role = null, ?int $minturns = null, ?string $parentintensity = null,
+            ?array $topic = null) {
         $this->id = $id;
         $this->persona = $persona;
         $this->learningobjectives = $learningobjectives;
@@ -72,6 +77,7 @@ class scenario_definition {
         $this->role = $role;
         $this->minturns = $minturns;
         $this->parentintensity = $parentintensity;
+        $this->topic = $topic;
     }
 
     /**
@@ -164,5 +170,26 @@ class scenario_definition {
      */
     public function get_parent_intensity(): ?string {
         return $this->parentintensity;
+    }
+
+    /**
+     * Gets the optional topic metadata array (code, title).
+     *
+     * @return array|null
+     */
+    public function get_topic(): ?array {
+        return $this->topic;
+    }
+
+    /**
+     * Gets the topic code for this scenario, defaulting to 'parent_counseling'.
+     *
+     * @return string
+     */
+    public function get_topic_code(): string {
+        if (is_array($this->topic) && !empty($this->topic['code'])) {
+            return (string)$this->topic['code'];
+        }
+        return 'parent_counseling';
     }
 }

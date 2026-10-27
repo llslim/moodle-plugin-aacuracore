@@ -103,8 +103,16 @@ class scenario_loader {
         $role = $persona['role'] ?? null;
         $minturns = isset($data['min_turns']) ? (int)$data['min_turns'] : null;
         $parentintensity = $data['parent_intensity'] ?? null;
+        $topic = null;
+        if (isset($data['topic'])) {
+            if (is_array($data['topic'])) {
+                $topic = $data['topic'];
+            } else if (is_string($data['topic']) && trim($data['topic']) !== '') {
+                $topic = ['code' => trim($data['topic'])];
+            }
+        }
 
-        return new scenario_definition($id, $persona, $objectives, $states, $prompttemplate, $role, $minturns, $parentintensity);
+        return new scenario_definition($id, $persona, $objectives, $states, $prompttemplate, $role, $minturns, $parentintensity, $topic);
     }
 
     /**
