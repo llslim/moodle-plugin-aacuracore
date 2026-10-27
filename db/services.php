@@ -58,4 +58,12 @@ $functions = [
         "type" => "write",
         "ajax" => true,
     ],
+    "local_aacuracore_activity_library" => [
+        "classpath" => "local/aacuracore/classes/external/activity_library.php",
+        "classname" => "\\local_aacuracore\\external\\activity_library",
+        "methodname" => "api",
+        "description" => "Per-activity Topic and Scenario Library configuration and promotion API",
+        "type" => "write",
+        "ajax" => true,
+    ],
 ];

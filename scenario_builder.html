@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AACURA - Custom Scenario Builder Form</title>
+    <title>AACURA - Topic & Scenario Library Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -25,7 +25,7 @@
         }
 
         .builder-container {
-            max-width: 900px;
+            max-width: 980px;
             width: 100%;
             margin: 1.5rem auto;
             background-color: var(--card-bg);
@@ -38,60 +38,64 @@
 
         .header {
             border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            margin-bottom: 1.75rem;
         }
 
         .header h1 {
-            font-size: 1.8rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin: 0;
         }
 
         .header p {
             color: var(--text-muted);
             margin-top: 0.5rem;
+            margin-bottom: 0;
             font-size: 0.95rem;
         }
 
         .section-title {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
             font-weight: 700;
             color: var(--primary);
-            margin-bottom: 1.25rem;
-            margin-top: 2.25rem;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
             padding-bottom: 0.5rem;
             border-bottom: 2px solid var(--primary);
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.5rem;
         }
 
         .form-group {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.15rem;
         }
 
         label {
             display: block;
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-size: 0.88rem;
+            font-weight: 600;
             color: var(--text-main);
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.35rem;
         }
 
         input[type="text"],
+        input[type="number"],
         select,
         textarea {
             width: 100%;
             background-color: var(--input-bg);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 0.75rem;
+            padding: 0.65rem 0.75rem;
             color: var(--text-main);
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             outline: none;
             transition: border-color 0.2s, background-color 0.2s;
         }
@@ -105,7 +109,7 @@
 
         textarea {
             resize: vertical;
-            min-height: 90px;
+            min-height: 85px;
         }
 
         .node-card {
@@ -113,7 +117,7 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 1.25rem;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1.15rem;
             position: relative;
         }
 
@@ -130,34 +134,46 @@
             gap: 1rem;
         }
 
-        .actions {
-            margin-top: 2.5rem;
-            display: flex;
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 1rem;
         }
 
+        .actions {
+            margin-top: 2rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
         .btn {
-            padding: 0.85rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             border: none;
             transition: background-color 0.2s, transform 0.1s;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.45rem;
         }
 
         .btn-primary {
             background-color: var(--primary);
             color: white;
-            flex: 1;
             justify-content: center;
         }
 
         .btn-primary:hover {
             background-color: var(--primary-hover);
+        }
+
+        .btn-success {
+            background-color: #198754;
+            color: white;
+            justify-content: center;
         }
 
         .btn-secondary {
@@ -169,8 +185,31 @@
             background-color: #CBD5E1;
         }
 
+        .badge-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-system {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-course {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-role {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+
         .json-preview {
-            margin-top: 2rem;
+            margin-top: 1.5rem;
             background-color: #0F172A;
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -191,61 +230,258 @@
 </head>
 <body>
 
+<?php
+$actionurl = new moodle_url('/local/aacuracore/scenario_builder.php', $courseid > 0 ? ['courseid' => $courseid] : []);
+$topicsmap = [];
+if (!empty($topics)) {
+    foreach ($topics as $t) {
+        $topicsmap[$t->topiccode] = $t;
+    }
+}
+?>
+
 <div class="builder-container">
     <div class="header">
-        <h1>💬 AACURA Custom Scenario Builder & Persona Registry</h1>
-        <p>Build a custom roleplay scenario profile below or upload an existing <code>.json</code> file to register new personas site-wide.</p>
+        <h1>📚 AACURA Topic &amp; Scenario Library Manager</h1>
+        <p>
+            Organize LAFF "Don't Cry" communication roleplay scenarios by <strong>Topic</strong> and <strong>Stakeholder Role</strong>.
+            <?php if ($courseid > 0): ?>
+                <span class="badge-pill badge-course">Course Context (Course ID #<?php echo (int)$courseid; ?>) — New scenarios default to Course Scope</span>
+            <?php else: ?>
+                <span class="badge-pill badge-system">System Administration Context — Managing System &amp; Course Libraries</span>
+            <?php endif; ?>
+        </p>
     </div>
 
-    <!-- Quick Upload Section -->
-    <div style="background-color: var(--card-sub-bg); border: 1px dashed var(--primary); border-radius: 8px; padding: 1.25rem; margin-bottom: 2rem;">
-        <div style="font-weight: 700; font-size: 1.1rem; color: var(--primary); margin-bottom: 0.5rem;">
-            📤 Upload Existing Scenario JSON File
-        </div>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
-            Already have a scenario <code>.json</code> file? Upload it directly to register or update the persona in the site-wide scenario registry.
-        </p>
-        <form action="<?php echo new moodle_url('/local/aacuracore/scenario_builder.php'); ?>" method="post" enctype="multipart/form-data" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <!-- =================================================================== -->
+    <!-- A. TOPIC LIBRARY SECTION                                            -->
+    <!-- =================================================================== -->
+    <div class="section-title" style="margin-top: 0;">
+        <span>🗂️ 1. Conversation Topics (<?php echo !empty($topics) ? count($topics) : 0; ?>)</span>
+        <button type="button" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="var el=document.getElementById('new-topic-panel'); el.style.display = (el.style.display==='none'?'block':'none');">
+            ➕ Create / Update Topic
+        </button>
+    </div>
+
+    <!-- Collapsible Create Topic Form -->
+    <div id="new-topic-panel" class="node-card" style="display: none; background-color: #f0fdf4; border-color: #86efac;">
+        <div class="node-header" style="color: #166534;">Create or Update a Conversation Topic</div>
+        <form action="<?php echo $actionurl->out(false); ?>" method="post">
             <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
-            <input type="hidden" name="action" value="upload">
-            <input type="file" name="jsonfile" accept=".json" required style="flex: 1; min-width: 240px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background-color: var(--card-bg);">
-            <button type="submit" class="btn btn-primary" style="flex: initial; padding: 0.65rem 1.25rem;">
-                ⬆️ Upload & Register Scenario
+            <input type="hidden" name="action" value="create_topic">
+            <div class="grid-3">
+                <div class="form-group">
+                    <label for="new_topiccode">Topic Unique Code</label>
+                    <input type="text" id="new_topiccode" name="topiccode" placeholder="e.g., telepractice_aac" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_topicname">Topic Display Name</label>
+                    <input type="text" id="new_topicname" name="topicname" placeholder="e.g., Telepractice AAC Coaching" required>
+                </div>
+                <div class="form-group">
+                    <label for="new_topicscope">Library Scope</label>
+                    <select id="new_topicscope" name="scope">
+                        <?php if ($courseid > 0): ?>
+                        <option value="course" selected>Course Library (Course #<?php echo (int)$courseid; ?> only)</option>
+                        <?php endif; ?>
+                        <?php if ($issiteadmin): ?>
+                        <option value="system" <?php echo ($courseid === 0) ? 'selected' : ''; ?>>System Library (All Courses)</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="grid-3">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="new_topicdesc">Pedagogical Description</label>
+                    <input type="text" id="new_topicdesc" name="topicdescription" placeholder="Describe the communication goals and LAFF focus for this topic...">
+                </div>
+                <div class="form-group">
+                    <label for="new_topicturns">Default Min Turns / Intensity</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="number" id="new_topicturns" name="default_min_turns" value="8" min="4" max="20" style="width: 80px;">
+                        <select name="default_intensity">
+                            <option value="very_low">Very Low</option>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="very_high">Very High</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success" style="padding: 0.5rem 1rem; font-size: 0.88rem;">
+                💾 Save Topic
             </button>
         </form>
     </div>
 
-    <!-- Registered Custom Personas Table -->
-    <?php if (!empty($customscenarios)): ?>
-    <div style="margin-bottom: 2.5rem;">
+    <?php if (!empty($topics)): ?>
+    <div style="overflow-x: auto; margin-bottom: 1.75rem;">
+        <table class="table table-sm table-bordered" style="width: 100%; font-size: 0.88rem;">
+            <thead style="background-color: var(--card-sub-bg);">
+                <tr>
+                    <th style="padding: 0.6rem;">Topic Name</th>
+                    <th style="padding: 0.6rem;">Code</th>
+                    <th style="padding: 0.6rem;">Scope</th>
+                    <th style="padding: 0.6rem;">Defaults</th>
+                    <th style="padding: 0.6rem;">Description</th>
+                    <?php if ($issiteadmin): ?>
+                    <th style="padding: 0.6rem; text-align: center;">Admin Action</th>
+                    <?php endif; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($topics as $tp): ?>
+                <tr>
+                    <td style="padding: 0.6rem; font-weight: 600;"><?php echo s($tp->name); ?></td>
+                    <td style="padding: 0.6rem; font-family: monospace; color: var(--primary);"><?php echo s($tp->topiccode); ?></td>
+                    <td style="padding: 0.6rem;">
+                        <?php if ($tp->scope === 'system'): ?>
+                            <span class="badge-pill badge-system">🌐 System</span>
+                        <?php else: ?>
+                            <span class="badge-pill badge-course">📘 Course #<?php echo (int)$tp->courseid; ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="padding: 0.6rem; white-space: nowrap;">
+                        <?php echo (int)$tp->default_min_turns; ?> turns · <?php echo s($tp->default_intensity); ?>
+                    </td>
+                    <td style="padding: 0.6rem; color: var(--text-muted);"><?php echo s(shorten_text($tp->description ?? '', 85)); ?></td>
+                    <?php if ($issiteadmin): ?>
+                    <td style="padding: 0.6rem; text-align: center;">
+                        <?php if ($tp->scope === 'course'): ?>
+                        <form action="<?php echo $actionurl->out(false); ?>" method="post" style="margin: 0;">
+                            <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
+                            <input type="hidden" name="action" value="promote_topic">
+                            <input type="hidden" name="topiccode" value="<?php echo s($tp->topiccode); ?>">
+                            <input type="hidden" name="fromcourseid" value="<?php echo (int)$tp->courseid; ?>">
+                            <button type="submit" class="btn btn-sm btn-primary" style="padding: 0.2rem 0.55rem; font-size: 0.78rem;">
+                                🌐 Promote to System
+                            </button>
+                        </form>
+                        <?php else: ?>
+                        <span style="color: var(--text-muted); font-size: 0.78rem;">System-wide</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endif; ?>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
+
+    <!-- =================================================================== -->
+    <!-- B. UPLOAD SCENARIO JSON SECTION                                     -->
+    <!-- =================================================================== -->
+    <div style="background-color: var(--card-sub-bg); border: 1px dashed var(--primary); border-radius: 8px; padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 0.4rem;">
+            📤 Upload &amp; Assign Scenario JSON to a Topic
+        </div>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Upload a scenario <code>.json</code> file and assign it to a single Topic in the library.
+        </p>
+        <form action="<?php echo $actionurl->out(false); ?>" method="post" enctype="multipart/form-data" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
+            <input type="hidden" name="action" value="upload">
+            <select name="topiccode" style="width: auto; min-width: 220px; padding: 0.55rem;">
+                <?php foreach ($topicsmap as $tcode => $tobj): ?>
+                <option value="<?php echo s($tcode); ?>">Topic: <?php echo s($tobj->name); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <?php if ($issiteadmin): ?>
+            <select name="scope" style="width: auto; min-width: 170px; padding: 0.55rem;">
+                <?php if ($courseid > 0): ?>
+                <option value="course" selected>Scope: Course #<?php echo (int)$courseid; ?></option>
+                <?php endif; ?>
+                <option value="system" <?php echo ($courseid === 0) ? 'selected' : ''; ?>>Scope: System Library</option>
+            </select>
+            <?php endif; ?>
+            <input type="file" name="jsonfile" accept=".json" required style="flex: 1; min-width: 220px; padding: 0.45rem; border: 1px solid var(--border); border-radius: 6px; background-color: var(--card-bg);">
+            <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.15rem;">
+                ⬆️ Upload &amp; Register Scenario
+            </button>
+        </form>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- C. REGISTERED SCENARIO LIBRARY TABLE (FILTERABLE BY TOPIC)          -->
+    <!-- =================================================================== -->
+    <?php if (!empty($libraryscenarios)): ?>
+    <div style="margin-bottom: 2.25rem;">
         <div class="section-title" style="margin-top: 0;">
-            👥 Registered Custom Site-Wide Personas (<?php echo count($customscenarios); ?>)
+            <span>👥 2. Scenario Library Registry (<?php echo count($libraryscenarios); ?>)</span>
+            <select id="library-topic-filter" style="width: auto; min-width: 240px; font-size: 0.85rem; padding: 0.35rem 0.65rem;" onchange="filterScenarioTable(this.value)">
+                <option value="all">Filter by Topic: All Topics</option>
+                <?php foreach ($topicsmap as $tcode => $tobj): ?>
+                <option value="<?php echo s($tcode); ?>"><?php echo s($tobj->name); ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div style="overflow-x: auto;">
-            <table class="table table-striped table-hover" style="width: 100%; border: 1px solid var(--border); border-radius: 8px; margin-top: 0.75rem;">
+            <table class="table table-striped table-hover" id="scenario-library-table" style="width: 100%; border: 1px solid var(--border); border-radius: 8px; font-size: 0.88rem;">
                 <thead style="background-color: var(--card-sub-bg);">
                     <tr>
-                        <th style="padding: 0.75rem;">Persona Name</th>
-                        <th style="padding: 0.75rem;">Scenario Code</th>
-                        <th style="padding: 0.75rem;">Description / Backstory</th>
-                        <th style="padding: 0.75rem; text-align: center; width: 120px;">Action</th>
+                        <th style="padding: 0.65rem;">Persona Name</th>
+                        <th style="padding: 0.65rem;">Code</th>
+                        <th style="padding: 0.65rem;">Assigned Topic (1:N)</th>
+                        <th style="padding: 0.65rem;">Role</th>
+                        <th style="padding: 0.65rem;">Scope</th>
+                        <th style="padding: 0.65rem;">Backstory Summary</th>
+                        <th style="padding: 0.65rem; text-align: center; width: 190px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($customscenarios as $cs): ?>
-                    <tr>
-                        <td style="padding: 0.75rem; font-weight: 600;"><?php echo s($cs->name); ?></td>
-                        <td style="padding: 0.75rem; font-family: monospace; color: var(--primary);"><?php echo s($cs->scenariocode); ?></td>
-                        <td style="padding: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"><?php echo s(shorten_text($cs->description, 90)); ?></td>
-                        <td style="padding: 0.75rem; text-align: center;">
-                            <form action="<?php echo new moodle_url('/local/aacuracore/scenario_builder.php'); ?>" method="post" onsubmit="return confirm('Are you sure you want to delete custom persona <?php echo s($cs->name); ?>?');" style="margin: 0;">
-                                <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
-                                <input type="hidden" name="action" value="delete">
-                                <input type="hidden" name="scenariocode" value="<?php echo s($cs->scenariocode); ?>">
-                                <button type="submit" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.85rem; background-color: #dc3545; border-color: #dc3545; color: white;">
-                                    🗑️ Remove
-                                </button>
-                            </form>
+                    <?php foreach ($libraryscenarios as $sc): ?>
+                    <tr data-topic="<?php echo s($sc->topiccode); ?>">
+                        <td style="padding: 0.65rem; font-weight: 600;"><?php echo s($sc->name); ?></td>
+                        <td style="padding: 0.65rem; font-family: monospace; color: var(--primary);"><?php echo s($sc->scenariocode); ?></td>
+                        <td style="padding: 0.65rem;">
+                            <?php
+                            $tname = isset($topicsmap[$sc->topiccode]) ? $topicsmap[$sc->topiccode]->name : $sc->topiccode;
+                            echo s($tname);
+                            ?>
+                        </td>
+                        <td style="padding: 0.65rem;">
+                            <span class="badge-pill badge-role"><?php echo s($sc->role_label ?: 'Parent'); ?></span>
+                        </td>
+                        <td style="padding: 0.65rem;">
+                            <?php if ($sc->scope === 'system'): ?>
+                                <span class="badge-pill badge-system">🌐 System</span>
+                            <?php else: ?>
+                                <span class="badge-pill badge-course">📘 Course #<?php echo (int)$sc->courseid; ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="padding: 0.65rem; font-size: 0.82rem; color: var(--text-muted);">
+                            <?php echo s(shorten_text($sc->description ?? '', 75)); ?>
+                        </td>
+                        <td style="padding: 0.65rem; text-align: center;">
+                            <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                                <?php if ($issiteadmin && $sc->scope === 'course'): ?>
+                                <form action="<?php echo $actionurl->out(false); ?>" method="post" style="margin: 0;">
+                                    <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
+                                    <input type="hidden" name="action" value="promote_scenario">
+                                    <input type="hidden" name="scenariocode" value="<?php echo s($sc->scenariocode); ?>">
+                                    <input type="hidden" name="fromcourseid" value="<?php echo (int)$sc->courseid; ?>">
+                                    <button type="submit" class="btn btn-sm btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.76rem;" title="Promote this course scenario to the System Library for all courses">
+                                        🌐 Promote
+                                    </button>
+                                </form>
+                                <?php endif; ?>
+
+                                <?php if (empty($sc->is_builtin)): ?>
+                                <form action="<?php echo $actionurl->out(false); ?>" method="post" onsubmit="return confirm('Delete custom scenario <?php echo s($sc->name); ?>?');" style="margin: 0;">
+                                    <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="scenariocode" value="<?php echo s($sc->scenariocode); ?>">
+                                    <input type="hidden" name="fromcourseid" value="<?php echo (int)$sc->courseid; ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.76rem; background-color: #dc3545; color: white;">
+                                        🗑️ Remove
+                                    </button>
+                                </form>
+                                <?php else: ?>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Built-in</span>
+                                <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -255,23 +491,60 @@
     </div>
     <?php endif; ?>
 
+    <!-- =================================================================== -->
+    <!-- D. INTERACTIVE SCENARIO BUILDER FORM                                -->
+    <!-- =================================================================== -->
     <form id="scenario-form">
-        <!-- 1. Metadata -->
-        <div class="section-title">📋 1. Scenario Identification & Metadata</div>
-        <div class="grid-2">
+        <div class="section-title">📋 3. Build a New LAFF Roleplay Scenario Profile</div>
+        <div class="grid-3">
             <div class="form-group">
                 <label for="scenario_id">Scenario Unique Code (ID)</label>
-                <input type="text" id="scenario_id" value="custom_parent_01" placeholder="e.g., custom_parent_01" required>
+                <input type="text" id="scenario_id" value="custom_persona_01" placeholder="e.g., custom_persona_01" required>
             </div>
             <div class="form-group">
-                <label for="persona_name">Parent Full Name</label>
-                <input type="text" id="persona_name" value="Mary (Parent)" placeholder="e.g., Mary (Parent)" required>
+                <label for="persona_name">Persona Full Name</label>
+                <input type="text" id="persona_name" value="Mary (Parent)" placeholder="e.g., Dr. Patel (Pediatric Neurologist)" required>
+            </div>
+            <div class="form-group">
+                <label for="scenario_topic">Assigned Topic Category (1:N)</label>
+                <select id="scenario_topic">
+                    <?php foreach ($topicsmap as $tcode => $tobj): ?>
+                    <option value="<?php echo s($tcode); ?>"><?php echo s($tobj->name); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="form-group">
+                <label for="role_type">Stakeholder Role Type</label>
+                <select id="role_type" onchange="syncRoleLabel()">
+                    <option value="parent" data-label="Parent" selected>Parent / Family Member</option>
+                    <option value="doctor" data-label="Physician">Doctor / Medical Specialist</option>
+                    <option value="manufacturer" data-label="Device Representative">AAC Device Manufacturer Rep</option>
+                    <option value="aac_user" data-label="AAC Communicator">AAC User / Self-Advocate</option>
+                    <option value="school_admin" data-label="School Administrator">School Administrator / Principal</option>
+                    <option value="iep_team" data-label="IEP Team Member">IEP Team Specialist</option>
+                    <option value="insurance_rep" data-label="Funding Reviewer">Insurance / Funding Reviewer</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="role_display_label">Role Display Label</label>
+                <input type="text" id="role_display_label" value="Parent" placeholder="e.g., Parent, Physician, AAC Communicator">
+            </div>
+            <div class="form-group">
+                <label for="child_preferred_pronoun">Preferred Pronoun</label>
+                <select id="child_preferred_pronoun">
+                    <option value="he/him" selected>he/him</option>
+                    <option value="she/her">she/her</option>
+                    <option value="they/them">they/them</option>
+                </select>
             </div>
         </div>
 
         <div class="form-group">
-            <label for="backstory">Parent Backstory & Child Context</label>
-            <textarea id="backstory" required placeholder="Describe child's diagnosis, age, communication history, and parent's emotional perspective...">Parent of a non-verbal 6-year-old child. Feels overwhelmed and defensive about school accommodations.</textarea>
+            <label for="backstory">Persona Backstory &amp; Clinical/Educational Context</label>
+            <textarea id="backstory" required placeholder="Describe the stakeholder's background, AAC context, and core concern...">Parent of a non-verbal 6-year-old child. Feels overwhelmed and defensive about school accommodations.</textarea>
         </div>
 
         <div class="grid-2">
@@ -282,98 +555,65 @@
                     <option value="overwhelmed">Overwhelmed</option>
                     <option value="anxious">Anxious</option>
                     <option value="confused">Confused</option>
+                    <option value="skeptical">Skeptical</option>
+                    <option value="direct">Direct / Time-Pressed</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="child_preferred_pronoun">Child Preferred Pronoun</label>
-                <select id="child_preferred_pronoun">
-                    <option value="he/him" selected>he/him (Son / Boy)</option>
-                    <option value="she/her">she/her (Daughter / Girl)</option>
-                    <option value="they/them">they/them (Non-binary / Gender-neutral)</option>
-                </select>
+                <label for="communication_style">Communication Style</label>
+                <input type="text" id="communication_style" value="Blunt, highly emotional, protective of child." placeholder="e.g., Blunt, speaks rapidly..." required>
             </div>
-        </div>
-
-        <div class="form-group">
-            <label for="communication_style">Communication Style</label>
-            <input type="text" id="communication_style" value="Blunt, highly emotional, protective of child." placeholder="e.g., Blunt, speaks rapidly..." required>
         </div>
 
         <div class="form-group">
             <label for="learning_objectives">Pedagogical Learning Objectives (Comma separated)</label>
-            <input type="text" id="learning_objectives" value="active_listening, de_escalation" placeholder="e.g., active_listening, de_escalation, jargon_free_explanation" required>
+            <input type="text" id="learning_objectives" value="active_listening, de_escalation, plain_language" placeholder="e.g., active_listening, de_escalation, jargon_free_explanation" required>
         </div>
 
         <!-- 1b. Conversation Settings -->
-        <div class="section-title" style="margin-top: 1.25rem;">⚙️ 1b. Conversation Settings</div>
+        <div class="section-title" style="margin-top: 1.25rem;">⚙️ 4. Conversation Settings &amp; LAFF Prompt Template</div>
         <div class="node-card" style="background-color: #f4f6fb; border-color: #c7d2fe;">
-            <div class="form-group" style="margin-bottom: 0.75rem;">
-                <label for="min_turns">Minimum Turn Count (N)</label>
-                <select id="min_turns">
-                    <option value="0">Use site default (8)</option>
-                    <option value="4">4 turns</option>
-                    <option value="6">6 turns</option>
-                    <option value="8" selected>8 turns</option>
-                    <option value="10">10 turns</option>
-                    <option value="12">12 turns</option>
-                    <option value="16">16 turns</option>
-                    <option value="20">20 turns</option>
-                </select>
-                <small class="form-text text-muted">Minimum number of student turns the conversation must run before grading. A terminal state reached early will not end the conversation before this count.</small>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-                <label for="parent_intensity">Parent Intensity / Aggressiveness</label>
-                <select id="parent_intensity">
-                    <option value="">Use site default</option>
-                    <option value="very_low">Very Low (gentle, passive)</option>
-                    <option value="low">Low (mildly assertive)</option>
-                    <option value="medium">Medium</option>
-                    <option value="high" selected>High (assertive & firm)</option>
-                    <option value="very_high">Very High (confrontational)</option>
-                </select>
-                <small class="form-text text-muted">Controls how assertive/aggressive the parent persona behaves via the <code>{{parent_intensity}}</code> prompt placeholder.</small>
+            <div class="grid-2">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="min_turns">Minimum Turn Count (N)</label>
+                    <select id="min_turns">
+                        <option value="0">Use topic/site default (8)</option>
+                        <option value="4">4 turns</option>
+                        <option value="6">6 turns</option>
+                        <option value="8" selected>8 turns</option>
+                        <option value="10">10 turns</option>
+                        <option value="12">12 turns</option>
+                        <option value="16">16 turns</option>
+                        <option value="20">20 turns</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="parent_intensity">Persona Intensity / Assertiveness</label>
+                    <select id="parent_intensity">
+                        <option value="">Use topic/site default</option>
+                        <option value="very_low">Very Low (gentle, passive)</option>
+                        <option value="low">Low (mildly assertive)</option>
+                        <option value="medium">Medium</option>
+                        <option value="high" selected>High (assertive &amp; firm)</option>
+                        <option value="very_high">Very High (confrontational)</option>
+                    </select>
+                </div>
             </div>
         </div>
 
-        <!-- 2. Prompt Template -->
-        <div class="section-title" style="margin-top: 1.25rem;">🧠 2. LLM Prompt Template</div>
         <div class="node-card" style="background-color: #f0f7ff; border-color: #93c5fd;">
-            <div class="node-header" style="color: #1d4ed8; margin-bottom: 0.5rem;">System Prompt Template (Optional)</div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                Customize the LLM system prompt that controls the parent persona's behavior. Use <code>{{placeholder}}</code> tokens to inject scenario fields. If left empty, the default hardcoded template is used.
-                <br><strong>Available placeholders:</strong>
-                <code>{{persona_name}}</code> <code>{{backstory}}</code> <code>{{pronoun}}</code> <code>{{communication_style}}</code>
-                <code>{{initial_mood}}</code> <code>{{statekey}}</code> <code>{{stateprompt}}</code>
-                <code>{{scenario_id}}</code> <code>{{learning_objectives}}</code> <code>{{parent_intensity}}</code>
-            </p>
+            <div class="node-header" style="color: #1d4ed8; margin-bottom: 0.5rem;">System Prompt Template (Optional — Leave blank to use role-generic LAFF template)</div>
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="prompt_template">Prompt Template Text</label>
-                <textarea id="prompt_template" style="min-height: 140px; font-family: SFMono-Regular, Consolas, monospace; font-size: 0.85rem;" placeholder="Leave empty to use the default hardcoded prompt template.">Your name is {{persona_name}}. Backstory:
-{{backstory}}
-
-Child Preferred Pronoun: {{pronoun}}
-Your communication style is: {{communication_style}}
-Your intensity as a parent: {{parent_intensity}}
-
-Current dialogue state requirement:
-You are in the '{{statekey}}' state of the conversation.
-On this turn, you must convey the following core concern: "{{stateprompt}}"
-
-CRITICAL RULES:
-- Stay strictly in character as the parent.
-- Always refer to your child using their preferred pronoun ({{pronoun}}). Do NOT substitute incorrect gender pronouns.
-- NEVER start your response with 'I understand', 'I understand your concern', 'I understand your concerns', 'That makes sense', 'I see', or 'Thank you'.
-- NEVER validate or praise the teacher's explanation.
-- Jump straight into your emotional reaction or concern in character as the parent in 2-4 concise sentences.</textarea>
+                <textarea id="prompt_template" style="min-height: 110px; font-family: SFMono-Regular, Consolas, monospace; font-size: 0.85rem;" placeholder="Leave empty to use the default role-generic LAFF prompt template."></textarea>
             </div>
         </div>
 
         <!-- 3. Directed Dialogue Graph -->
-        <div class="section-title">🔄 3. Directed Dialogue Graph Nodes</div>
+        <div class="section-title">🔄 5. Directed Dialogue Graph Nodes (Universal LAFF Checks)</div>
 
         <!-- START Node -->
         <div class="node-card">
-            <div class="node-header">Node 1: START (Opening Parent Prompt)</div>
+            <div class="node-header">Node 1: START (Opening Prompt)</div>
             <div class="form-group">
                 <label for="prompt_start">Opening Bot Prompt</label>
                 <textarea id="prompt_start" required>I don't understand why we are changing the communication system again. Every time he gets used to something, you switch it!</textarea>
@@ -382,10 +622,10 @@ CRITICAL RULES:
                 <div class="form-group">
                     <label for="val_start">Validation Check Type</label>
                     <select id="val_start">
-                        <option value="empathy_check" selected>empathy_check (Listen & Empathize)</option>
+                        <option value="empathy_check" selected>empathy_check (Listen &amp; Empathize)</option>
                         <option value="jargon_check">jargon_check (Don't Yack Jargon)</option>
                         <option value="de_escalation_check">de_escalation_check (Don't React)</option>
-                        <option value="clarification_check">clarification_check (Ask & Focus)</option>
+                        <option value="clarification_check">clarification_check (Ask &amp; Focus)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -395,14 +635,14 @@ CRITICAL RULES:
             </div>
             <div class="form-group">
                 <label for="rubric_start">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_start" rows="3" placeholder="1 point if teacher starts with a greeting.&#10;1 point for a statement of empathy.">1 point if teacher starts with a greeting.
-1 point for a statement of empathy.</textarea>
+                <textarea id="rubric_start" rows="2">1 point if trainee starts with a warm, respectful greeting.
+1 point for a statement of empathy or validation (Listen &amp; Empathize).</textarea>
             </div>
         </div>
 
         <!-- EXPLORATION Node -->
         <div class="node-card">
-            <div class="node-header">Node 2: EXPLORATION (Empathetic Response)</div>
+            <div class="node-header">Node 2: EXPLORATION (Collaborative Exploration)</div>
             <div class="form-group">
                 <label for="prompt_exploration">Bot Prompt</label>
                 <textarea id="prompt_exploration" required>Well, yes, I suppose it's frustrating for him too. What makes this new approach so much better?</textarea>
@@ -412,9 +652,9 @@ CRITICAL RULES:
                     <label for="val_exploration">Validation Check Type</label>
                     <select id="val_exploration">
                         <option value="jargon_check" selected>jargon_check (Don't Yack Jargon)</option>
-                        <option value="empathy_check">empathy_check (Listen & Empathize)</option>
+                        <option value="empathy_check">empathy_check (Listen &amp; Empathize)</option>
                         <option value="de_escalation_check">de_escalation_check (Don't React)</option>
-                        <option value="clarification_check">clarification_check (Ask & Focus)</option>
+                        <option value="clarification_check">clarification_check (Ask &amp; Focus)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -424,8 +664,8 @@ CRITICAL RULES:
             </div>
             <div class="form-group">
                 <label for="rubric_exploration">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_exploration" rows="3" placeholder="1 point for asking 'what brings you in today?'.">1 point for asking 'what brings you in today?'.
-1 point for asking 'how long has this been a problem?'.</textarea>
+                <textarea id="rubric_exploration" rows="2">1 point for asking open-ended questions about daily communication needs.
+1 point for explaining AAC concepts in plain language without unexplained jargon.</textarea>
             </div>
         </div>
 
@@ -434,16 +674,16 @@ CRITICAL RULES:
             <div class="node-header">Node 3: ESCALATION (Defensive Confrontation)</div>
             <div class="form-group">
                 <label for="prompt_escalation">Bot Prompt</label>
-                <textarea id="prompt_escalation" required>You specialists always think you know what's best without living our daily lives! I want to speak to the principal.</textarea>
+                <textarea id="prompt_escalation" required>You specialists always think you know what's best without living our daily lives! I want to speak to the supervisor.</textarea>
             </div>
             <div class="grid-2">
                 <div class="form-group">
                     <label for="val_escalation">Validation Check Type</label>
                     <select id="val_escalation">
                         <option value="de_escalation_check" selected>de_escalation_check (Don't React)</option>
-                        <option value="empathy_check">empathy_check (Listen & Empathize)</option>
+                        <option value="empathy_check">empathy_check (Listen &amp; Empathize)</option>
                         <option value="jargon_check">jargon_check (Don't Yack Jargon)</option>
-                        <option value="clarification_check">clarification_check (Ask & Focus)</option>
+                        <option value="clarification_check">clarification_check (Ask &amp; Focus)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -453,8 +693,8 @@ CRITICAL RULES:
             </div>
             <div class="form-group">
                 <label for="rubric_escalation">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_escalation" rows="3" placeholder="1 point for asking 'was this ever not a problem?'.">1 point for asking 'was this ever not a problem?'.
-1 point for asking 'have you spoken to anyone else?'.</textarea>
+                <textarea id="rubric_escalation" rows="2">1 point for remaining calm and non-defensive (Don't React / Don't Criticize).
+1 point for validating the stakeholder's expertise and lived experience.</textarea>
             </div>
         </div>
 
@@ -463,14 +703,14 @@ CRITICAL RULES:
             <div class="node-header">Node 4: CONFUSION (Jargon Confusion)</div>
             <div class="form-group">
                 <label for="prompt_confusion">Bot Prompt</label>
-                <textarea id="prompt_confusion" required>Wait, what does SGD and high-tech gaze-select mean? You're using terms I don't understand.</textarea>
+                <textarea id="prompt_confusion" required>Wait, what do those technical terms mean? You're using clinical jargon I don't understand.</textarea>
             </div>
             <div class="grid-2">
                 <div class="form-group">
                     <label for="val_confusion">Validation Check Type</label>
                     <select id="val_confusion">
-                        <option value="clarification_check" selected>clarification_check (Ask & Focus)</option>
-                        <option value="empathy_check">empathy_check (Listen & Empathize)</option>
+                        <option value="clarification_check" selected>clarification_check (Ask &amp; Focus)</option>
+                        <option value="empathy_check">empathy_check (Listen &amp; Empathize)</option>
                         <option value="jargon_check">jargon_check (Don't Yack Jargon)</option>
                         <option value="de_escalation_check">de_escalation_check (Don't React)</option>
                     </select>
@@ -482,8 +722,8 @@ CRITICAL RULES:
             </div>
             <div class="form-group">
                 <label for="rubric_confusion">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_confusion" rows="3" placeholder="1 point for asking 'anything else to add?'.">1 point for asking 'anything else to add?'.
-1 point for asking 'have you spoken to anyone else?'.</textarea>
+                <textarea id="rubric_confusion" rows="2">1 point for clarifying terms in plain, accessible language.
+1 point for checking for shared understanding.</textarea>
             </div>
         </div>
 
@@ -492,12 +732,12 @@ CRITICAL RULES:
             <div class="node-header">Node 5: RESOLUTION (Successful End State)</div>
             <div class="form-group">
                 <label for="prompt_resolution">Bot Prompt</label>
-                <textarea id="prompt_resolution" required>Okay, that actually makes sense. Thank you for walking me through this. Let's try it.</textarea>
+                <textarea id="prompt_resolution" required>Okay, that actually makes sense. Thank you for walking me through this. Let's try those first steps together.</textarea>
             </div>
             <div class="form-group">
                 <label for="rubric_resolution">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_resolution" rows="3" placeholder="1 point for asking 'anything else to add?'.">1 point for asking 'anything else to add?'.
-1 point for wrapping up the conversation.</textarea>
+                <textarea id="rubric_resolution" rows="2">1 point for summarizing agreed-upon first steps (Find First Steps).
+1 point for inviting any final questions before concluding.</textarea>
             </div>
         </div>
 
@@ -505,20 +745,29 @@ CRITICAL RULES:
             <div class="node-header">Node 6: FAIL_STATE (Failed End State)</div>
             <div class="form-group">
                 <label for="prompt_fail">Bot Prompt</label>
-                <textarea id="prompt_fail" required>This session is complete. The parent has requested formal administrative review.</textarea>
+                <textarea id="prompt_fail" required>This session is complete. The stakeholder has ended the meeting due to unresolved communication breakdown.</textarea>
             </div>
             <div class="form-group">
                 <label for="rubric_fail">Rubric Criteria (one per line)</label>
-                <textarea id="rubric_fail" rows="3" placeholder="1 point for acknowledging the parent's request.">1 point for acknowledging the parent's request.
-1 point for offering next steps.</textarea>
+                <textarea id="rubric_fail" rows="2">1 point for acknowledging the stakeholder's request respectfully.
+1 point for offering a constructive follow-up option.</textarea>
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="actions">
-            <button type="button" class="btn btn-secondary" onclick="generatePreview()">Preview JSON</button>
-            <button type="button" class="btn btn-primary" onclick="exportJSON()">📥 Export & Download JSON</button>
+            <button type="button" class="btn btn-secondary" onclick="generatePreview()">👁️ Preview JSON</button>
+            <button type="button" class="btn btn-success" onclick="registerInLibrary()">💾 Register Directly in Topic Library</button>
+            <button type="button" class="btn btn-primary" onclick="exportJSON()">📥 Export &amp; Download JSON</button>
         </div>
+    </form>
+
+    <!-- Hidden Form for Direct Library Registration -->
+    <form id="direct-register-form" action="<?php echo $actionurl->out(false); ?>" method="post" style="display: none;">
+        <input type="hidden" name="sesskey" value="<?php echo sesskey(); ?>">
+        <input type="hidden" name="action" value="save_form_scenario">
+        <input type="hidden" name="topiccode" id="direct_register_topic" value="">
+        <input type="hidden" name="scenario_json" id="direct_register_json" value="">
     </form>
 
     <!-- JSON Preview Modal Box -->
@@ -529,6 +778,26 @@ CRITICAL RULES:
 </div>
 
 <script>
+    function syncRoleLabel() {
+        const sel = document.getElementById('role_type');
+        const opt = sel.options[sel.selectedIndex];
+        const labelInput = document.getElementById('role_display_label');
+        if (opt && labelInput) {
+            labelInput.value = opt.getAttribute('data-label') || 'Parent';
+        }
+    }
+
+    function filterScenarioTable(topic) {
+        const rows = document.querySelectorAll('#scenario-library-table tbody tr');
+        rows.forEach(row => {
+            if (topic === 'all' || row.getAttribute('data-topic') === topic) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
     function buildJsonObject() {
         const objectivesStr = document.getElementById('learning_objectives').value;
         const objectives = objectivesStr.split(',').map(item => item.trim()).filter(item => item.length > 0);
@@ -543,15 +812,27 @@ CRITICAL RULES:
 
         const minTurns = document.getElementById('min_turns').value;
         const intensity = document.getElementById('parent_intensity').value;
+        const topicCode = document.getElementById('scenario_topic').value;
+        const roleType = document.getElementById('role_type').value;
+        const roleLabel = document.getElementById('role_display_label').value.trim() || 'Parent';
 
-        const json = {
+        return {
             "scenario_id": document.getElementById('scenario_id').value.trim(),
+            "topic": topicCode,
             "persona": {
                 "name": document.getElementById('persona_name').value.trim(),
                 "child_preferred_pronoun": document.getElementById('child_preferred_pronoun').value,
                 "backstory": document.getElementById('backstory').value.trim(),
                 "initial_mood": document.getElementById('initial_mood').value,
-                "communication_style": document.getElementById('communication_style').value.trim()
+                "communication_style": document.getElementById('communication_style').value.trim(),
+                "role": {
+                    "type": roleType,
+                    "display_label": roleLabel,
+                    "relationship_to_trainee": "collaborator",
+                    "formality_level": roleType === "doctor" || roleType === "school_admin" ? "formal" : "semi-formal",
+                    "power_dynamic": "peer",
+                    "technical_expertise": roleType === "doctor" ? "medical" : (roleType === "manufacturer" ? "aac_expert" : "layperson")
+                }
             },
             "learning_objectives": objectives,
             "prompt_template": template.length > 0 ? template : undefined,
@@ -614,6 +895,13 @@ CRITICAL RULES:
         const text = document.getElementById('json-preview-text');
         text.textContent = JSON.stringify(json, null, 2);
         container.style.display = 'block';
+    }
+
+    function registerInLibrary() {
+        const json = buildJsonObject();
+        document.getElementById('direct_register_topic').value = json.topic || 'parent_counseling';
+        document.getElementById('direct_register_json').value = JSON.stringify(json, null, 2);
+        document.getElementById('direct-register-form').submit();
     }
 
     function exportJSON() {

@@ -200,4 +200,7 @@ $string['core_ai_providers_heading'] = 'Site-Wide Moodle Core AI Providers';
 $string['core_ai_providers_desc'] = 'The table below lists all AI Providers registered in Moodle Core AI Subsystem (\core_ai\manager). Core AI providers are managed centrally in Site Administration > General > AI > AI Providers.';
 $string['core_ai_selected_provider'] = 'Active Core AI Provider Plugin';
 $string['core_ai_selected_provider_desc'] = 'Select which registered Moodle Core AI provider plugin to use when Moodle Core AI Framework strategy is active.';
+$string['topic_library_heading'] = 'Topic & Scenario Library (System & Course Scopes)';
+$string['topic_library_desc'] = 'In AACURA v3.0, topics and scenarios are managed per activity via the Topic & Scenario Library. System-scope topics and scenarios are available across all courses; course-scope scenarios created by instructors can be promoted to the System Library by a Site Administrator.';
+
 

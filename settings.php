@@ -38,29 +38,44 @@ if ($hassiteconfig) {
         \local_aacuracore\diagnostics_renderer::render_tabbar_and_panel()
     ));
 
-    // 1. ACTIVE SCENARIO PROFILES
+    // 1. TOPIC & SCENARIO LIBRARY + ACTIVE SYSTEM SCENARIO PROFILES
     $scenarios = [
         "anna" => "Anna Charles (Autism pre-K concern)",
         "brianna" => "Brianna Mitchell (Apraxia / social isolation)",
         "cathy" => "Cathy Fratner (Down Syndrome / app concern)",
         "mary" => "Mary (Mother of Non-Verbal 6-Year-Old)",
     ];
-    $customrecords = $DB->get_records("local_aacuracore_custom_scenarios", null, "name ASC");
-    foreach ($customrecords as $cr) {
-        $scenarios[$cr->scenariocode] = $cr->name . " (Custom: " . $cr->scenariocode . ")";
+    if (class_exists('\\local_aacuracore\\library\\topic_library_manager')) {
+        try {
+            \local_aacuracore\library\topic_library_manager::ensure_seeded();
+            $libscenarios = \local_aacuracore\library\topic_library_manager::get_scenarios_for_topic(null, 0, false);
+            foreach ($libscenarios as $ls) {
+                $scenarios[$ls->scenariocode] = "{$ls->name} [{$ls->topiccode} · {$ls->role_label}]";
+            }
+        } catch (\Throwable $e) {
+            // Fallback during initial install before upgrade runs.
+        }
+    }
+    if ($DB->get_manager()->table_exists("local_aacuracore_custom_scenarios")) {
+        $customrecords = $DB->get_records("local_aacuracore_custom_scenarios", null, "name ASC");
+        foreach ($customrecords as $cr) {
+            if (!isset($scenarios[$cr->scenariocode])) {
+                $scenarios[$cr->scenariocode] = $cr->name . " (Custom: " . $cr->scenariocode . ")";
+            }
+        }
     }
 
-    // Scenario Builder & Site-Wide Registry button + description, appended below the profiles.
+    // Topic & Scenario Library Manager link + description.
     $registryurl = new moodle_url('/local/aacuracore/scenario_builder.php');
-    $scenariodesc = get_string("active_scenarios_desc", "local_aacuracore") .
+    $scenariodesc = get_string("topic_library_desc", "local_aacuracore") .
         '<div class="mt-2"><a href="' . $registryurl->out() . '" target="_blank" class="btn btn-sm btn-primary" style="background-color: #4f2c11; border-color: #4f2c11; color: white;">' .
-        '🛠️ Manage Personas & Open Scenario Builder' .
+        '📚 Open Topic & Scenario Library Manager (Promote Course Scenarios / Build Personas)' .
         '</a></div>' .
-        '<div class="form-text text-muted mt-2">Upload custom JSON scenarios, view registered personas, or remove personas site-wide.</div>';
+        '<div class="form-text text-muted mt-2">Create or edit Topics, upload custom JSON scenarios, or promote instructor-created Course Scenarios to the System Library.</div>';
 
     $settings->add(new admin_setting_configmultiselect(
         "local_aacuracore/active_scenarios",
-        get_string("active_scenarios", "local_aacuracore"),
+        get_string("topic_library_heading", "local_aacuracore"),
         $scenariodesc,
         array_keys($scenarios),
         $scenarios

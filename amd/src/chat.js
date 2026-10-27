@@ -138,11 +138,15 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                             $(`#${geniaiServerId}-audio`).audioPlayer();
                             if (data.builder_json) {
                                 builderJson = data.builder_json;
-                                // Append an Export JSON button.
+                                $("#geniai-save-library").show();
+                                // Append Export JSON and Save to Course Topic Library buttons.
                                 $(`#${geniaiServerId}`).append(
-                                    `<div class="builder-export-wrap mt-2">
+                                    `<div class="builder-export-wrap mt-2" style="display:flex;gap:8px;flex-wrap:wrap;">
                                         <button id="geniai-export-json" class="btn btn-sm btn-primary" style="background-color:#4f2c11;border-color:#4f2c11;color:white;">
                                             📥 Export Scenario JSON
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-success geniai-save-library-inline" style="background-color:#198754;border-color:#198754;color:white;">
+                                            ➕ Save to Activity &amp; Topic Library
                                         </button>
                                     </div>`
                                 );
@@ -243,34 +247,27 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                     // Leaving builder mode returns to normal persona chat.
                     builderActive = false;
                     builderJson = null;
-                    setStatus("💬 Conversing with " + ($(this).find("option:selected").text() || "persona"));
+                    $("#geniai-save-library").hide();
+                    var selectedOption = $(this).find("option:selected");
+                    var roleLabel = selectedOption.attr("data-role-label") || $("#geniai-mod-popup").attr("data-role-label") || "Parent";
+                    $("#geniai-mod-popup").attr("data-role-label", roleLabel);
+                    setStatus("💬 Conversing with " + (selectedOption.text() || roleLabel));
                     geniaiareamensagens.html("");
-                    startChat();
 
-                    var methodname = "local_aacuracore_history_3";
-                    if (release >= 4.2) {
-                        methodname = "local_aacuracore_history_4";
-                    }
-
+                    var relNum = parseFloat(release) || 0;
+                    var chatMethod = (relNum >= 4.2) ? "local_aacuracore_chat_4" : "local_aacuracore_chat_3";
                     ajax.call([{
-                        methodname: methodname,
+                        methodname: chatMethod,
                         args: {
+                            message: "$$persona=" + selected + "$$",
                             courseid: courseid,
                             cmid: cmid,
-                            action: "clear"
+                            lang: chat.lang
                         }
                     }])[0].done(function() {
-                        var chatMethod = (release >= 4.2) ? "local_aacuracore_chat_4" : "local_aacuracore_chat_3";
-                        ajax.call([{
-                            methodname: chatMethod,
-                            args: {
-                                message: "$$persona=" + selected + "$$",
-                                courseid: courseid,
-                                cmid: cmid,
-                                lang: chat.lang
-                            }
-                        }]);
-                    });
+                        geniaiareamensagens.html("");
+                        showHistory();
+                    }).fail(notification.exception);
                 }
             });
 
@@ -281,6 +278,301 @@ define(["jquery", "core/ajax", "core/notification"], function($, ajax, notificat
                     bar.textContent = text;
                 }
             }
+
+            // Course Edit Mode: Inline Topic & Scenario Configuration Drawer.
+            var drawerLibrary = {topics: [], scenarios: [], activity: null};
+            var drawerSelectedCodes = [];
+
+            function renderDrawerScenarios() {
+                var listEl = document.getElementById("geniai-drawer-scenario-list");
+                var topicEl = document.getElementById("geniai-drawer-topic");
+                var defaultEl = document.getElementById("geniai-drawer-default-scenario");
+                if (!listEl) {
+                    return;
+                }
+                var activeTopic = topicEl ? topicEl.value : "all";
+                listEl.innerHTML = "";
+
+                if (defaultEl) {
+                    var currentDefault = defaultEl.value || (drawerLibrary.activity ? drawerLibrary.activity.scenariocode : "anna");
+                    defaultEl.innerHTML = "";
+                    drawerLibrary.scenarios.forEach(function(sc) {
+                        if (drawerSelectedCodes.indexOf(sc.scenariocode) !== -1 || sc.scenariocode === currentDefault) {
+                            var opt = document.createElement("option");
+                            opt.value = sc.scenariocode;
+                            opt.textContent = sc.name + " (" + (sc.role_label || "Parent") + ")";
+                            if (sc.scenariocode === currentDefault) {
+                                opt.selected = true;
+                            }
+                            defaultEl.appendChild(opt);
+                        }
+                    });
+                }
+
+                drawerLibrary.scenarios.forEach(function(sc) {
+                    if (activeTopic !== "all" && sc.topiccode !== activeTopic && drawerSelectedCodes.indexOf(sc.scenariocode) === -1) {
+                        return;
+                    }
+                    var checked = drawerSelectedCodes.indexOf(sc.scenariocode) !== -1;
+                    var item = document.createElement("label");
+                    item.style.cssText = "display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;cursor:pointer;margin:0;font-size:12px;border:1px solid " + (checked ? "#4f46e5" : "#e2e8f0") + ";background:" + (checked ? "#eef2ff" : "#f8fafc") + ";";
+                    var cb = document.createElement("input");
+                    cb.type = "checkbox";
+                    cb.value = sc.scenariocode;
+                    cb.checked = checked;
+                    cb.addEventListener("change", function() {
+                        if (cb.checked) {
+                            if (drawerSelectedCodes.indexOf(sc.scenariocode) === -1) {
+                                drawerSelectedCodes.push(sc.scenariocode);
+                            }
+                        } else {
+                            drawerSelectedCodes = drawerSelectedCodes.filter(function(c) {
+                                return c !== sc.scenariocode;
+                            });
+                            if (drawerSelectedCodes.length === 0) {
+                                drawerSelectedCodes = [sc.scenariocode];
+                            }
+                        }
+                        renderDrawerScenarios();
+                    });
+                    var textSpan = document.createElement("span");
+                    textSpan.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+                    textSpan.textContent = sc.name + " (" + (sc.role_label || "Parent") + ")";
+                    item.appendChild(cb);
+                    item.appendChild(textSpan);
+                    listEl.appendChild(item);
+                });
+            }
+
+            function loadTopicDrawer() {
+                var statusEl = document.getElementById("geniai-drawer-status");
+                if (statusEl) {
+                    statusEl.textContent = "Loading library...";
+                }
+                ajax.call([{
+                    methodname: "local_aacuracore_activity_library",
+                    args: {
+                        action: "get_library",
+                        courseid: courseid,
+                        cmid: cmid
+                    }
+                }])[0].done(function(res) {
+                    if (statusEl) {
+                        statusEl.textContent = "";
+                    }
+                    if (!res || !res.success) {
+                        return;
+                    }
+                    var payload = {};
+                    try {
+                        payload = JSON.parse(res.data || "{}");
+                    } catch (err) {
+                        return;
+                    }
+                    drawerLibrary.topics = payload.topics || [];
+                    drawerLibrary.scenarios = payload.scenarios || [];
+                    drawerLibrary.activity = payload.activity || {};
+                    drawerSelectedCodes = Array.isArray(drawerLibrary.activity.scenariolist)
+                        ? drawerLibrary.activity.scenariolist.slice()
+                        : ["anna"];
+
+                    var topicEl = document.getElementById("geniai-drawer-topic");
+                    if (topicEl) {
+                        topicEl.innerHTML = "";
+                        var allOpt = document.createElement("option");
+                        allOpt.value = "all";
+                        allOpt.textContent = "All Topics (Show all scenarios)";
+                        topicEl.appendChild(allOpt);
+                        drawerLibrary.topics.forEach(function(t) {
+                            var opt = document.createElement("option");
+                            opt.value = t.topiccode;
+                            opt.textContent = t.name + (t.scope === "course" ? " [Course]" : "");
+                            if (t.topiccode === drawerLibrary.activity.topiccode) {
+                                opt.selected = true;
+                            }
+                            topicEl.appendChild(opt);
+                        });
+                    }
+
+                    var switchEl = document.getElementById("geniai-drawer-allow-switch");
+                    if (switchEl && typeof drawerLibrary.activity.allow_persona_switch !== "undefined") {
+                        switchEl.value = String(drawerLibrary.activity.allow_persona_switch);
+                    }
+
+                    var gradeEl = document.getElementById("geniai-drawer-grading-mode");
+                    if (gradeEl && drawerLibrary.activity.grading_mode) {
+                        gradeEl.value = drawerLibrary.activity.grading_mode;
+                    }
+
+                    renderDrawerScenarios();
+                    var defaultEl = document.getElementById("geniai-drawer-default-scenario");
+                    if (defaultEl && drawerLibrary.activity.scenariocode) {
+                        defaultEl.value = drawerLibrary.activity.scenariocode;
+                    }
+                }).fail(notification.exception);
+            }
+
+            $("#geniai-topic-drawer-btn").on("click", function(e) {
+                if (e) {
+                    e.preventDefault();
+                }
+                var drawer = $("#geniai-topic-drawer");
+                if (drawer.is(":visible")) {
+                    drawer.slideUp(150);
+                } else {
+                    drawer.slideDown(150);
+                    loadTopicDrawer();
+                }
+            });
+
+            $("#geniai-drawer-close").on("click", function() {
+                $("#geniai-topic-drawer").slideUp(150);
+            });
+
+            $("#geniai-drawer-topic").on("change", function() {
+                var selectedTopic = $(this).val();
+                if (selectedTopic && selectedTopic !== "all") {
+                    var matching = drawerLibrary.scenarios
+                        .filter(function(s) {
+                            return s.topiccode === selectedTopic;
+                        })
+                        .map(function(s) {
+                            return s.scenariocode;
+                        });
+                    if (matching.length > 0) {
+                        drawerSelectedCodes = matching;
+                    }
+                }
+                renderDrawerScenarios();
+            });
+
+            $("#geniai-drawer-select-topic").on("click", function() {
+                var selectedTopic = $("#geniai-drawer-topic").val() || "all";
+                drawerSelectedCodes = drawerLibrary.scenarios
+                    .filter(function(s) {
+                        return selectedTopic === "all" || s.topiccode === selectedTopic;
+                    })
+                    .map(function(s) {
+                        return s.scenariocode;
+                    });
+                renderDrawerScenarios();
+            });
+
+            $("#geniai-drawer-save").on("click", function() {
+                var statusEl = document.getElementById("geniai-drawer-status");
+                var topicVal = $("#geniai-drawer-topic").val() || "parent_counseling";
+                var defaultVal = $("#geniai-drawer-default-scenario").val() || (drawerSelectedCodes[0] || "anna");
+                var switchVal = parseInt($("#geniai-drawer-allow-switch").val(), 10);
+                if (isNaN(switchVal)) {
+                    switchVal = 1;
+                }
+                var gradeVal = $("#geniai-drawer-grading-mode").val() || "single_highest";
+
+                if (statusEl) {
+                    statusEl.textContent = "Saving...";
+                }
+
+                ajax.call([{
+                    methodname: "local_aacuracore_activity_library",
+                    args: {
+                        action: "save_activity_config",
+                        courseid: courseid,
+                        cmid: cmid,
+                        topiccode: topicVal === "all" ? "parent_counseling" : topicVal,
+                        scenariolist: JSON.stringify(drawerSelectedCodes),
+                        scenariocode: defaultVal,
+                        allow_persona_switch: switchVal,
+                        grading_mode: gradeVal
+                    }
+                }])[0].done(function(res) {
+                    if (res && res.success) {
+                        if (statusEl) {
+                            statusEl.textContent = "✅ Activity Topic & Scenarios updated!";
+                        }
+                        try {
+                            var saved = JSON.parse(res.data || "{}");
+                            if (Array.isArray(saved.personas_options)) {
+                                var select = $("#geniai-persona-select");
+                                select.html("");
+                                saved.personas_options.forEach(function(p) {
+                                    var opt = $("<option></option>")
+                                        .attr("value", p.code)
+                                        .attr("data-role-label", p.role_label || "Parent")
+                                        .text(p.name);
+                                    if (p.selected) {
+                                        opt.prop("selected", true);
+                                    }
+                                    select.append(opt);
+                                });
+                            }
+                            var topicObj = drawerLibrary.topics.find(function(t) {
+                                return t.topiccode === saved.topiccode;
+                            });
+                            if (topicObj) {
+                                $("#geniai-topic-badge").text(topicObj.name);
+                            }
+                        } catch (err) {
+                            // Ignore parse errors.
+                        }
+                    } else if (statusEl) {
+                        statusEl.textContent = "⚠️ " + (res ? res.message : "Save failed");
+                    }
+                }).fail(notification.exception);
+            });
+
+            // Save generated AI Scenario Builder JSON directly to Course Topic Library & Activity.
+            $(document).on("click", "#geniai-save-library, .geniai-save-library-inline", function(e) {
+                if (e) {
+                    e.preventDefault();
+                }
+                if (!builderJson) {
+                    notification.exception(new Error("No generated scenario JSON available yet. Complete the Automated Scenario Builder interview first."));
+                    return;
+                }
+                var btn = $(this);
+                var originalText = btn.text();
+                btn.prop("disabled", true).text("⏳ Saving...");
+
+                ajax.call([{
+                    methodname: "local_aacuracore_activity_library",
+                    args: {
+                        action: "save_builder_scenario",
+                        courseid: courseid,
+                        cmid: cmid,
+                        topiccode: "",
+                        scenario_json: builderJson
+                    }
+                }])[0].done(function(res) {
+                    btn.prop("disabled", false);
+                    if (res && res.success) {
+                        btn.text("✅ Saved to Activity & Library");
+                        setStatus("✅ " + res.message);
+                        try {
+                            var saved = JSON.parse(res.data || "{}");
+                            if (saved.scenariocode) {
+                                var select = $("#geniai-persona-select");
+                                if (select.find("option[value='" + saved.scenariocode + "']").length === 0) {
+                                    var label = saved.name + " (" + (saved.role_label || "Parent") + ")";
+                                    select.append(
+                                        $("<option></option>")
+                                            .attr("value", saved.scenariocode)
+                                            .attr("data-role-label", saved.role_label || "Parent")
+                                            .text(label)
+                                    );
+                                }
+                            }
+                        } catch (err) {
+                            // Ignore parse error.
+                        }
+                    } else {
+                        btn.text(originalText);
+                        notification.exception(new Error(res ? res.message : "Failed to save scenario."));
+                    }
+                }).fail(function(err) {
+                    btn.prop("disabled", false).text(originalText);
+                    notification.exception(err);
+                });
+            });
 
             // Automated Scenario Builder: launch interviewer mode.
             var builderJson = null;
