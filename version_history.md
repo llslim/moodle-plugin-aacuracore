@@ -1,6 +1,6 @@
 # AACURA Engine Version History & Tagging Log
 
-### Current Version: **v1.5.0-dev** (Release `2.4.21`)
+### Current Version: **v3.0.0-dev** (Release `3.0.0`)
 
 This log documents the commit history across the `dev`, `dev-2.x` (2.x bug fixes), and `dev-3.x` (3.x major feature development) branches, mapping each update to its determined semantic version based on the project's git tagging policy (`main` holds the verified working release synced from `dev`).
 
@@ -8,6 +8,7 @@ This log documents the commit history across the `dev`, `dev-2.x` (2.x bug fixes
 
 | Git Tag | Moodle `$plugin->version` | `$plugin->release` | Commit Message / Description |
 | :--- | :--- | :--- | :--- |
+| `v3.0.0-dev` | `2026110100` | `3.0.0` | **Major Release: Per-Activity Configuration, Multi-Instance Course Isolation & Topic/Scenario Library** (Issues #18, #19, #20, #21) |
 | *pending* | `2026100103` | `2.4.21` | refactor: resolve Issue #11 — refactor max_turns to min_turns in bot_engine, diagnostics, tests, and lang |
 | *pending* | `2026100102` | `2.4.20` | fix: resolve Issue #17 — correct scenario builder form action URL (`/local/aacuracore/`) |
 | *pending* | `2026100101` | `2.4.19` | fix: wait for user initial message (#14), explain prompt info usage (#15), and fix delegated scenario export (#16) |

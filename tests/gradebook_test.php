@@ -58,6 +58,13 @@ class gradebook_test extends \advanced_testcase {
             $table->add_field('intro', XMLDB_TYPE_TEXT, null, null, null, null, null);
             $table->add_field('introformat', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
             $table->add_field('scenariocode', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'anna');
+            $table->add_field('topiccode', XMLDB_TYPE_CHAR, '100', null, null, null, 'parent_counseling');
+            $table->add_field('scenariolist', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('allow_persona_switch', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1');
+            $table->add_field('grading_mode', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'single_highest');
+            $table->add_field('generation_case', XMLDB_TYPE_CHAR, '50', null, null, null, null);
+            $table->add_field('custom_prompt_template', XMLDB_TYPE_TEXT, null, null, null, null, null);
+            $table->add_field('custom_eval_template', XMLDB_TYPE_TEXT, null, null, null, null, null);
             $table->add_field('min_turns', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
             $table->add_field('max_turns', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
             $table->add_field('parent_intensity', XMLDB_TYPE_CHAR, '20', null, null, null, null);
