@@ -205,11 +205,12 @@ $string['topic_library_desc'] = 'In AACURA v3.0, topics and scenarios are manage
 
 $string['registration_key_header'] = 'Account Invitation & Verification';
 $string['registration_key'] = 'Registration Secret Key';
-$string['registration_key_help'] = 'An authorized invitation secret key is required to register an account on LL Slim Learn. Please contact Kevin Williams (llslim@gmail.com) to receive an invitation key.';
+$string['registration_key_help'] = 'An authorized invitation secret key is required to register an account on LL Slim Learn. Please submit an invitation request via the Site Contact Form.';
 $string['registration_key_required'] = 'A valid registration secret key is required to create an account.';
-$string['registration_key_invalid'] = 'The registration secret key you entered is invalid. Please verify your key or contact Kevin Williams (llslim@gmail.com).';
+$string['registration_key_invalid'] = 'The registration secret key you entered is invalid. Please verify your key or submit an inquiry via the Site Contact Form.';
 $string['registration_secret_key'] = 'Account Registration Secret Key';
 $string['registration_secret_key_desc'] = 'Secret key required for new users to register an account on the signup form (/login/signup.php). If left blank, no secret key will be required.';
+$string['registration_key_contact_link'] = 'Don\'t have an invitation key? <a href="{$a}" target="_blank">Request an Invitation Key via our Contact Form</a>.';
 
 
 

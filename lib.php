@@ -45,11 +45,19 @@ function local_aacuracore_before_footer() {
 function local_aacuracore_extend_signup_form($mform) {
     $expected_key = get_config('local_aacuracore', 'registration_secret_key');
     if (!empty($expected_key)) {
+        global $CFG;
         $mform->addElement('header', 'registration_key_header', get_string('registration_key_header', 'local_aacuracore'));
         $mform->addElement('text', 'registration_key', get_string('registration_key', 'local_aacuracore'), ['size' => 30]);
         $mform->setType('registration_key', PARAM_RAW_TRIMMED);
         $mform->addRule('registration_key', get_string('registration_key_required', 'local_aacuracore'), 'required', null, 'client');
         $mform->addHelpButton('registration_key', 'registration_key', 'local_aacuracore');
+
+        $contacturl = (new moodle_url('/user/contactsitesupport.php'))->out();
+        $contacthtml = html_writer::div(
+            get_string('registration_key_contact_link', 'local_aacuracore', $contacturl),
+            'form-text text-muted mb-3'
+        );
+        $mform->addElement('static', 'registration_key_contact', '', $contacthtml);
     }
 }
 
